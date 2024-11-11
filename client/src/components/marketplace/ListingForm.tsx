@@ -142,15 +142,9 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
     <Form {...form}>
       <form 
         onSubmit={form.handleSubmit(onSubmit)} 
-        className="flex flex-col w-full h-[85dvh] overflow-y-auto overscroll-none touch-pan-y px-4 sm:px-6 pb-6"
-        style={{
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-          WebkitOverflowScrolling: 'touch',
-          touchAction: 'pan-y pinch-zoom',
-        }}
+        className="flex flex-col w-full h-[85dvh] overflow-y-auto overscroll-none"
       >
-        <div className="flex-1 space-y-6 py-6">
+        <div className="flex-1 space-y-6 px-4 sm:px-6 py-6">
           <div className="grid grid-cols-1 gap-6">
             <FormField
               control={form.control}
@@ -329,7 +323,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
           </div>
         </div>
 
-        <div className="sticky bottom-0 space-y-6 pt-6 border-t border-border/10 bg-background/80 backdrop-blur">
+        <div className="sticky bottom-0 px-4 sm:px-6 py-4 space-y-4 border-t border-border/10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <Button
             type="button"
             variant="outline"
@@ -340,15 +334,17 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
           </Button>
 
           {previewQR && (
-            <div className="flex justify-center p-6 bg-background/50 rounded-lg cyber-panel">
-              <div className="relative w-full max-w-[200px] aspect-square bg-white rounded-lg p-4">
-                <QRCodeSVG
-                  value={previewQR}
-                  size={200}
-                  level="H"
-                  includeMargin={false}
-                  className="w-full h-full animate-in fade-in-50"
-                />
+            <div className="py-4 bg-background/95 backdrop-blur">
+              <div className="flex justify-center">
+                <div className="w-full max-w-[200px] aspect-square bg-white rounded-lg p-4">
+                  <QRCodeSVG
+                    value={previewQR}
+                    size={200}
+                    level="H"
+                    includeMargin={false}
+                    className="w-full h-full"
+                  />
+                </div>
               </div>
             </div>
           )}
