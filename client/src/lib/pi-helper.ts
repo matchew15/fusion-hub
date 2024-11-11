@@ -54,44 +54,18 @@ class PiHelper {
   private formatError(error: any, context: string): PiError {
     const formattedError = new Error() as PiError;
     formattedError.name = 'PiSDKError';
-    formattedError.message = error?.message || 'Unknown error occurred';
-    formattedError.code = error?.code;
+    formattedError.message = error?.message || `Pi SDK Error: ${context}`;
+    formattedError.code = error?.code || 'SDK_ERROR';
     formattedError.details = error?.details;
-    formattedError.stack = error?.stack;
     
-    // Log detailed error information
     console.error(`Pi SDK Error (${context}):`, {
       message: formattedError.message,
       code: formattedError.code,
       details: formattedError.details,
-      stack: formattedError.stack,
       context
     });
 
     return formattedError;
-  }
-
-  private async retryOperation<T>(
-    operation: () => Promise<T>,
-    retries = MAX_RETRIES,
-    context: string = ''
-  ): Promise<T> {
-    let lastError: any;
-    
-    for (let attempt = 1; attempt <= retries + 1; attempt++) {
-      try {
-        return await operation();
-      } catch (error: any) {
-        lastError = this.formatError(error, `${context} (Attempt ${attempt}/${retries + 1})`);
-        
-        if (attempt <= retries) {
-          console.warn(`Retrying operation (${context}), attempt ${attempt + 1}/${retries + 1}`);
-          await this.delay(RETRY_DELAY * attempt);
-        }
-      }
-    }
-    
-    throw lastError;
   }
 
   isPiBrowser(): boolean {
@@ -100,103 +74,118 @@ class PiHelper {
 
   async init(): Promise<void> {
     if (this.initialized) return;
-    if (this.initializationError) {
-      throw this.initializationError;
-    }
 
     if (!this.isPiBrowser()) {
-      this.initializationError = new Error(
-        'Pi SDK not available. Please open this application in the Pi Browser.'
+      throw this.formatError(
+        { message: 'Pi SDK not available. Please use Pi Browser.' },
+        'Browser Check'
       );
-      throw this.initializationError;
     }
 
     if (this.initializationPromise) {
       return this.initializationPromise;
     }
 
-    this.initializationPromise = this.retryOperation(async () => {
+    this.initializationPromise = new Promise(async (resolve, reject) => {
       try {
         this.sdk = window.Pi!;
-        const config = {
+        await this.sdk.init({
           version: "2.0",
           sandbox: process.env.NODE_ENV !== "production"
-        };
-        await this.sdk.init(config);
+        });
+        
+        console.info('Pi SDK initialized successfully', {
+          environment: process.env.NODE_ENV,
+          sandbox: process.env.NODE_ENV !== "production"
+        });
+        
         this.initialized = true;
-        this.initializationError = null;
-        console.info('Pi SDK initialized successfully');
-      } catch (error: any) {
-        this.initializationError = this.formatError(
-          error,
-          'SDK Initialization'
-        );
-        throw this.initializationError;
+        resolve();
+      } catch (error) {
+        const formattedError = this.formatError(error, 'Initialization');
+        this.initializationError = formattedError;
+        reject(formattedError);
       }
-    }, MAX_RETRIES, 'initialization');
+    });
 
     return this.initializationPromise;
   }
 
   async authenticate(): Promise<{ uid: string; accessToken: string }> {
     if (!this.isPiBrowser()) {
-      throw new Error('Authentication failed. Please use Pi Browser.');
+      throw this.formatError(
+        { message: 'Authentication failed. Please use Pi Browser.' },
+        'Browser Check'
+      );
     }
 
     if (!this.initialized) {
       await this.init();
     }
 
-    const auth = await this.sdk!.authenticate(
-      ['payments'],
-      { onIncompletePaymentFound: this.handleIncompletePayment.bind(this) }
-    );
+    try {
+      console.info('Starting Pi authentication with scopes:', REQUIRED_SCOPES);
+      const auth = await this.sdk!.authenticate(
+        REQUIRED_SCOPES,
+        { onIncompletePaymentFound: this.handleIncompletePayment.bind(this) }
+      );
 
-    if (!auth?.user?.uid) {
-      throw new Error('Authentication response missing user ID');
+      if (!auth?.user?.uid || !auth?.accessToken) {
+        throw this.formatError(
+          { message: 'Invalid authentication response' },
+          'Authentication Response'
+        );
+      }
+
+      console.info('Authentication successful', { uid: auth.user.uid });
+      return {
+        uid: auth.user.uid,
+        accessToken: auth.accessToken
+      };
+    } catch (error) {
+      throw this.formatError(error, 'Authentication');
     }
-
-    return {
-      uid: auth.user.uid,
-      accessToken: auth.accessToken
-    };
   }
 
-  async createPayment(payment: PiPayment) {
+  async createPayment(payment: PiPayment): Promise<PiPayment> {
     if (!this.isPiBrowser()) {
-      throw new Error('Payment creation failed. Please use Pi Browser.');
+      throw this.formatError(
+        { message: 'Payment creation failed. Please use Pi Browser.' },
+        'Payment Creation'
+      );
     }
 
     if (!this.initialized) {
       await this.init();
     }
 
-    return this.retryOperation(async () => {
-      try {
-        console.info('Creating payment:', payment);
-        const paymentData = await this.sdk!.createPayment({
-          amount: payment.amount,
-          memo: payment.memo,
-          metadata: payment.metadata
-        });
-        console.info('Payment created successfully');
-        return paymentData;
-      } catch (error: any) {
-        throw this.formatError(error, 'Payment Creation');
-      }
-    }, MAX_RETRIES, 'payment-creation');
+    try {
+      console.info('Creating payment:', payment);
+      const paymentData = await this.sdk!.createPayment({
+        amount: payment.amount,
+        memo: payment.memo,
+        metadata: payment.metadata
+      });
+      
+      console.info('Payment created successfully:', paymentData);
+      return paymentData;
+    } catch (error) {
+      throw this.formatError(error, 'Payment Creation');
+    }
   }
 
-  private async handleIncompletePayment(payment: PiPayment) {
-    return this.retryOperation(async () => {
-      try {
-        console.info('Handling incomplete payment:', payment);
-        await this.sdk!.completePayment(payment.identifier!);
-        console.info('Incomplete payment handled successfully');
-      } catch (error: any) {
-        throw this.formatError(error, 'Incomplete Payment Handling');
+  private async handleIncompletePayment(payment: PiPayment): Promise<void> {
+    try {
+      console.info('Handling incomplete payment:', payment);
+      if (!payment.identifier) {
+        throw new Error('Payment identifier missing');
       }
-    }, MAX_RETRIES, 'incomplete-payment');
+      
+      await this.sdk!.completePayment(payment.identifier);
+      console.info('Incomplete payment handled successfully');
+    } catch (error) {
+      throw this.formatError(error, 'Incomplete Payment');
+    }
   }
 }
 
