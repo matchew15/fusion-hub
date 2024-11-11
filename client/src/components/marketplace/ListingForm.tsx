@@ -141,10 +141,10 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
   return (
     <Form {...form}>
       <form 
-        onSubmit={form.handleSubmit(onSubmit)} 
-        className="flex flex-col w-full h-[85dvh] overflow-y-auto overscroll-none"
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="flex flex-col h-full"
       >
-        <div className="flex-1 space-y-6 px-4 sm:px-6 py-6">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6">
           <div className="grid grid-cols-1 gap-6">
             <FormField
               control={form.control}
@@ -323,46 +323,48 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
           </div>
         </div>
 
-        <div className="sticky bottom-0 px-4 sm:px-6 py-4 space-y-4 border-t border-border/10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full h-12 text-base neon-border"
-            onClick={() => generatePreviewQR(form.getValues())}
-          >
-            Generate QR Preview
-          </Button>
+        <div className="flex-shrink-0 px-4 sm:px-6 py-4 border-t border-border/10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="space-y-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-12 text-base neon-border"
+              onClick={() => generatePreviewQR(form.getValues())}
+            >
+              Generate QR Preview
+            </Button>
 
-          {previewQR && (
-            <div className="py-4 bg-background/95 backdrop-blur">
-              <div className="flex justify-center">
-                <div className="w-full max-w-[200px] aspect-square bg-white rounded-lg p-4">
-                  <QRCodeSVG
-                    value={previewQR}
-                    size={200}
-                    level="H"
-                    includeMargin={false}
-                    className="w-full h-full"
-                  />
+            {previewQR && (
+              <div className="py-4 bg-background/95 backdrop-blur">
+                <div className="flex justify-center">
+                  <div className="w-full max-w-[200px] aspect-square bg-white rounded-lg p-4">
+                    <QRCodeSVG
+                      value={previewQR}
+                      size={200}
+                      level="H"
+                      includeMargin={false}
+                      className="w-full h-full"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-
-          <Button 
-            type="submit" 
-            className="w-full h-12 text-base neon-border"
-            disabled={isSubmitting || isCompressing}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Creating Listing...
-              </>
-            ) : (
-              "Create Listing"
             )}
-          </Button>
+
+            <Button 
+              type="submit" 
+              className="w-full h-12 text-base neon-border"
+              disabled={isSubmitting || isCompressing}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Creating Listing...
+                </>
+              ) : (
+                "Create Listing"
+              )}
+            </Button>
+          </div>
         </div>
       </form>
     </Form>
