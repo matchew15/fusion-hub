@@ -5,7 +5,8 @@ import { z } from "zod";
 export const users = pgTable("users", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   username: text("username").unique().notNull(),
-  password: text("password").notNull(),
+  piUid: text("pi_uid").unique(), // Pi Network unique identifier
+  piAccessToken: text("pi_access_token"), // Pi Network access token
   piWalletAddress: text("pi_wallet_address"),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -40,7 +41,11 @@ export const transactions = pgTable("transactions", {
 });
 
 // Schemas
-export const insertUserSchema = createInsertSchema(users);
+export const insertUserSchema = createInsertSchema(users, {
+  piUid: z.string().optional(),
+  piAccessToken: z.string().optional(),
+  piWalletAddress: z.string().optional(),
+});
 export const selectUserSchema = createSelectSchema(users);
 export const insertListingSchema = createInsertSchema(listings);
 export const selectListingSchema = createSelectSchema(listings);
@@ -51,6 +56,7 @@ export const selectTransactionSchema = createSelectSchema(transactions);
 
 // Types
 export type User = z.infer<typeof selectUserSchema>;
+export type InsertUser = z.infer<typeof insertUserSchema>;
 export type Listing = z.infer<typeof selectListingSchema>;
 export type Chat = z.infer<typeof selectChatSchema>;
 export type Transaction = z.infer<typeof selectTransactionSchema>;

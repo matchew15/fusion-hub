@@ -1,11 +1,23 @@
 import { Express } from "express";
 import { setupAuth } from "./auth";
 import { db } from "../db";
-import { listings, transactions, chats } from "../db/schema";
-import { eq, and } from "drizzle-orm";
+import { listings, transactions, chats, users } from "../db/schema";
+import { eq, and, or } from "drizzle-orm";
 
 export function registerRoutes(app: Express) {
   setupAuth(app);
+
+  // Add a public route for initial auth check
+  app.get("/api/auth-check", (req, res) => {
+    res.json({ authenticated: req.isAuthenticated() });
+  });
+
+  app.get("/api/user", (req, res) => {
+    if (req.isAuthenticated()) {
+      return res.json(req.user);
+    }
+    res.status(401).json({ message: "Unauthorized" });
+  });
 
   // Listings routes
   app.get("/api/listings", async (req, res) => {
@@ -24,6 +36,31 @@ export function registerRoutes(app: Express) {
     }).returning();
     
     res.json(listing[0]);
+  });
+
+  // Users route for chat
+  app.get("/api/users", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const allUsers = await db.select().from(users);
+    res.json(allUsers);
+  });
+
+  app.get("/api/users/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, parseInt(req.params.id)))
+      .limit(1);
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json(user);
   });
 
   // Transactions routes
@@ -59,6 +96,19 @@ export function registerRoutes(app: Express) {
   });
 
   // Chat routes
+  app.post("/api/chats", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const chat = await db.insert(chats).values({
+      ...req.body,
+      senderId: req.user.id,
+    }).returning();
+
+    res.json(chat[0]);
+  });
+
   app.get("/api/chats/:userId", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });

@@ -1,9 +1,47 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/hooks/use-user";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
 
 export default function Navbar() {
   const { user, login, logout } = useUser();
+  const { toast } = useToast();
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  const handleLogin = async () => {
+    setIsAuthenticating(true);
+    try {
+      const result = await login();
+      if (!result.ok) {
+        toast({
+          variant: "destructive",
+          title: "Authentication Failed",
+          description: result.message,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Error",
+        description: error.message,
+      });
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    const result = await logout();
+    if (!result.ok) {
+      toast({
+        variant: "destructive",
+        title: "Logout Failed",
+        description: result.message,
+      });
+    }
+  };
 
   return (
     <nav className="border-b border-primary/20 backdrop-blur-sm">
@@ -43,7 +81,7 @@ export default function Navbar() {
                 <Button
                   variant="outline"
                   className="neon-border"
-                  onClick={() => logout()}
+                  onClick={handleLogout}
                 >
                   Logout
                 </Button>
@@ -52,9 +90,17 @@ export default function Navbar() {
               <Button
                 variant="default"
                 className="neon-border"
-                onClick={() => login({ username: "demo", password: "demo" })}
+                onClick={handleLogin}
+                disabled={isAuthenticating}
               >
-                Login
+                {isAuthenticating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  "Connect with Pi"
+                )}
               </Button>
             )}
           </div>

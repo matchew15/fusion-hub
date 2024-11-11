@@ -1,62 +1,66 @@
 import useSWR from "swr";
-import type { User, InsertUser } from "db/schema";
+import { piHelper } from "@/lib/pi-helper";
+import type { User } from "db/schema";
 
 export function useUser() {
-  const { data, error, mutate } = useSWR<User, Error>("/api/user", {
-    revalidateOnFocus: false,
-  });
+  const { data: authData, error, mutate } = useSWR<{
+    authenticated: boolean;
+    user: User | null;
+  }>("/api/auth-status");
+
+  const authenticateWithPi = async () => {
+    try {
+      await piHelper.init();
+      const piUid = await piHelper.authenticate();
+      
+      const response = await fetch("/pi-auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          piUid,
+          username: `pi_user_${piUid.slice(0, 8)}`,
+          accessToken: "demo_token", // In production, this would be a real Pi Network token
+        }),
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Authentication failed");
+      }
+
+      await mutate();
+      return { ok: true };
+    } catch (error: any) {
+      console.error("Pi authentication error:", error);
+      return { ok: false, message: error.message };
+    }
+  };
+
+  const logout = async () => {
+    try {
+      const response = await fetch("/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message);
+      }
+
+      await mutate();
+      return { ok: true };
+    } catch (error: any) {
+      return { ok: false, message: error.message };
+    }
+  };
 
   return {
-    user: data,
-    isLoading: !error && !data,
+    user: authData?.user ?? null,
+    isLoading: !error && !authData,
     error,
-    login: async (user: InsertUser) => {
-      const res = await handleRequest("/login", "POST", user);
-      mutate();
-      return res;
-    },
-    logout: async () => {
-      const res = await handleRequest("/logout", "POST");
-      mutate(undefined);
-      return res;
-    },
-    register: async (user: InsertUser) => {
-      const res = await handleRequest("/register", "POST", user);
-      mutate();
-      return res;
-    },
+    login: authenticateWithPi,
+    logout,
   };
-}
-
-type RequestResult =
-  | {
-      ok: true;
-    }
-  | {
-      ok: false;
-      message: string;
-    };
-
-async function handleRequest(
-  url: string,
-  method: string,
-  body?: InsertUser
-): Promise<RequestResult> {
-  try {
-    const response = await fetch(url, {
-      method,
-      headers: body ? { "Content-Type": "application/json" } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-      credentials: "include",
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      return { ok: false, message: errorData.message };
-    }
-
-    return { ok: true };
-  } catch (e: any) {
-    return { ok: false, message: e.toString() };
-  }
 }
