@@ -138,44 +138,28 @@ class PiHelper {
     return this.initializationPromise;
   }
 
-  async authenticate(): Promise<string> {
+  async authenticate(): Promise<{ uid: string; accessToken: string }> {
     if (!this.isPiBrowser()) {
       throw new Error('Authentication failed. Please use Pi Browser.');
     }
 
     if (!this.initialized) {
-      console.info('Initializing Pi SDK before authentication');
       await this.init();
     }
 
-    return this.retryOperation(async () => {
-      try {
-        console.info('Starting Pi authentication with scopes:', REQUIRED_SCOPES);
-        const auth = await this.sdk!.authenticate(REQUIRED_SCOPES, {
-          onIncompletePaymentFound: this.handleIncompletePayment.bind(this)
-        });
-        
-        if (!auth?.accessToken || !auth?.user?.uid) {
-          throw new Error('Authentication response missing required fields');
-        }
+    const auth = await this.sdk!.authenticate(
+      ['payments'],
+      { onIncompletePaymentFound: this.handleIncompletePayment.bind(this) }
+    );
 
-        // Verify the access token with Pi Network
-        const response = await fetch('https://api.minepi.com/v2/me', {
-          headers: { 'Authorization': `Bearer ${auth.accessToken}` }
-        });
+    if (!auth?.user?.uid) {
+      throw new Error('Authentication response missing user ID');
+    }
 
-        if (!response.ok) {
-          throw new Error('Token verification failed');
-        }
-
-        const userData = await response.json() as PiUserData;
-        console.info('User authentication verified:', userData);
-        
-        return auth.user.uid;
-      } catch (error: any) {
-        throw this.formatError(error, 'Authentication');
-      }
-    }, MAX_RETRIES, 'authentication');
+    return {
+      uid: auth.user.uid,
+      accessToken: auth.accessToken
+    };
   }
 
   async createPayment(payment: PiPayment) {

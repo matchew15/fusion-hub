@@ -60,8 +60,8 @@ export function useUser() {
       await piHelper.init();
       const authResult = await piHelper.authenticate();
       
-      if (!authResult.uid) {
-        throw new Error("Authentication response missing user ID");
+      if (!authResult?.uid) {
+        throw new Error('Authentication response missing user ID');
       }
 
       const response = await fetch("/pi-auth", {
@@ -78,7 +78,10 @@ export function useUser() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Authentication failed");
+        const error = new Error(data.message || "Authentication failed") as AuthError;
+        error.code = data.code;
+        error.details = data.details;
+        throw error;
       }
 
       await mutate();
