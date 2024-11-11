@@ -5,6 +5,7 @@ import createMemoryStore from "memorystore";
 import { users, insertUserSchema, type User as SelectUser } from "db/schema";
 import { db } from "db";
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 
 // extend express user object with our schema
 declare global {
@@ -12,6 +13,13 @@ declare global {
     interface User extends SelectUser {}
   }
 }
+
+// Validation schema for Pi Network authentication
+const piAuthSchema = z.object({
+  piUid: z.string().min(1, "Pi UID is required"),
+  accessToken: z.string().min(1, "Access token is required"),
+  username: z.string().min(1, "Username is required")
+});
 
 export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
@@ -52,20 +60,32 @@ export function setupAuth(app: Express) {
         .from(users)
         .where(eq(users.id, id))
         .limit(1);
+      
+      if (!user) {
+        return done(new Error("User not found"));
+      }
+      
       done(null, user);
     } catch (err) {
+      console.error("User deserialization error:", err);
       done(err);
     }
   });
 
-  // Pi Network Authentication
+  // Pi Network Authentication with improved error handling and validation
   app.post("/pi-auth", async (req, res) => {
     try {
-      const { piUid, accessToken, username } = req.body;
-
-      if (!piUid || !username) {
-        return res.status(400).json({ message: "Missing required Pi auth data" });
+      // Validate request body
+      const validationResult = piAuthSchema.safeParse(req.body);
+      
+      if (!validationResult.success) {
+        return res.status(400).json({
+          message: "Invalid authentication data",
+          errors: validationResult.error.errors
+        });
       }
+
+      const { piUid, accessToken, username } = validationResult.data;
 
       // Check if user exists by Pi UID
       let [user] = await db
@@ -75,30 +95,54 @@ export function setupAuth(app: Express) {
         .limit(1);
 
       if (!user) {
-        // Create new user if not exists
-        const [newUser] = await db
-          .insert(users)
-          .values({
-            username,
-            piUid,
-            piAccessToken: accessToken,
-          })
-          .returning();
-        user = newUser;
+        // Create new user with validation and error handling
+        try {
+          const [newUser] = await db
+            .insert(users)
+            .values({
+              username,
+              piUid,
+              piAccessToken: accessToken,
+            })
+            .returning();
+          
+          console.info("New user created:", { id: newUser.id, username: newUser.username });
+          user = newUser;
+        } catch (error: any) {
+          console.error("User creation error:", error);
+          
+          if (error.code === '23505') { // Unique constraint violation
+            return res.status(409).json({
+              message: "Username already exists",
+              code: "USERNAME_TAKEN"
+            });
+          }
+          
+          throw error;
+        }
       } else {
         // Update access token if user exists
-        const [updatedUser] = await db
-          .update(users)
-          .set({ piAccessToken: accessToken })
-          .where(eq(users.id, user.id))
-          .returning();
-        user = updatedUser;
+        try {
+          const [updatedUser] = await db
+            .update(users)
+            .set({ 
+              piAccessToken: accessToken,
+              username: username // Update username if changed
+            })
+            .where(eq(users.id, user.id))
+            .returning();
+          user = updatedUser;
+        } catch (error: any) {
+          console.error("User update error:", error);
+          throw error;
+        }
       }
 
-      // Log the user in
+      // Log the user in with enhanced error handling
       return new Promise<void>((resolve, reject) => {
         req.login(user, (err) => {
           if (err) {
+            console.error("Login error:", err);
             reject(err);
           } else {
             resolve();
@@ -113,19 +157,31 @@ export function setupAuth(app: Express) {
             piUid: user.piUid,
           },
         });
-      }).catch(() => {
-        res.status(500).json({ message: "Login failed" });
+      }).catch((error) => {
+        console.error("Authentication error:", error);
+        res.status(500).json({ 
+          message: "Login failed",
+          code: "LOGIN_ERROR"
+        });
       });
     } catch (error: any) {
       console.error("Pi auth error:", error);
-      res.status(500).json({ message: "Authentication failed" });
+      res.status(500).json({ 
+        message: "Authentication failed",
+        code: error.code || "AUTH_ERROR",
+        details: process.env.NODE_ENV === "development" ? error.message : undefined
+      });
     }
   });
 
   app.post("/logout", (req, res) => {
     req.logout((err) => {
       if (err) {
-        return res.status(500).json({ message: "Logout failed" });
+        console.error("Logout error:", err);
+        return res.status(500).json({ 
+          message: "Logout failed",
+          code: "LOGOUT_ERROR"
+        });
       }
       res.json({ message: "Logout successful" });
     });
@@ -144,9 +200,12 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
-    if (req.isAuthenticated()) {
-      return res.json(req.user);
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ 
+        message: "Unauthorized",
+        code: "NOT_AUTHENTICATED"
+      });
     }
-    res.status(401).json({ message: "Unauthorized" });
+    res.json(req.user);
   });
 }

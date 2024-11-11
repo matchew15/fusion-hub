@@ -13,13 +13,19 @@ interface AuthState {
   isAuthenticating: boolean;
   error: AuthError | null;
   retryCount: number;
+  lastAttempt: number | null;
 }
+
+const RETRY_DELAY_BASE = 1000; // Base delay of 1 second
+const MAX_RETRIES = 3;
+const MIN_RETRY_INTERVAL = 2000; // Minimum time between retries
 
 export function useUser() {
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticating: false,
     error: null,
     retryCount: 0,
+    lastAttempt: null
   });
 
   const { data: authData, error, mutate } = useSWR<{
@@ -27,46 +33,70 @@ export function useUser() {
     user: User | null;
   }>("/api/auth-status");
 
-  const authenticateWithPi = async (maxRetries = 3) => {
+  const authenticateWithPi = async (maxRetries = MAX_RETRIES) => {
     if (authState.isAuthenticating) {
       console.warn("Authentication already in progress");
       return { ok: false, message: "Authentication already in progress" };
     }
 
-    setAuthState(prev => ({ ...prev, isAuthenticating: true, error: null }));
+    // Check if we should wait before retrying
+    if (authState.lastAttempt && Date.now() - authState.lastAttempt < MIN_RETRY_INTERVAL) {
+      return {
+        ok: false,
+        message: "Please wait before retrying",
+        code: "RETRY_TOO_SOON"
+      };
+    }
+
+    setAuthState(prev => ({
+      ...prev,
+      isAuthenticating: true,
+      error: null,
+      lastAttempt: Date.now()
+    }));
 
     try {
       // Initialize Pi SDK first
       await piHelper.init();
-      const piUid = await piHelper.authenticate();
+      const authResult = await piHelper.authenticate();
       
+      if (!authResult.uid) {
+        throw new Error("Authentication response missing user ID");
+      }
+
       const response = await fetch("/pi-auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          piUid,
-          username: `pi_user_${piUid.slice(0, 8)}`,
-          accessToken: "demo_token", // In production, this would be a real Pi Network token
+          piUid: authResult.uid,
+          username: `pi_user_${authResult.uid.slice(0, 8)}`,
+          accessToken: authResult.accessToken
         }),
-        credentials: "include",
+        credentials: "include"
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Authentication failed");
+        throw new Error(data.message || "Authentication failed");
       }
 
       await mutate();
-      setAuthState(prev => ({ 
-        ...prev, 
-        isAuthenticating: false, 
+      setAuthState({
+        isAuthenticating: false,
         error: null,
-        retryCount: 0 
-      }));
+        retryCount: 0,
+        lastAttempt: null
+      });
       
       return { ok: true };
     } catch (error: any) {
-      console.error("Pi authentication error:", error);
+      console.error("Pi authentication error:", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        retryCount: authState.retryCount
+      });
       
       const formattedError: AuthError = {
         code: error.code,
@@ -79,16 +109,22 @@ export function useUser() {
         const shouldRetry = newRetryCount < maxRetries;
 
         if (shouldRetry) {
-          // Retry authentication after a delay
+          // Exponential backoff for retries
+          const delay = Math.min(
+            RETRY_DELAY_BASE * Math.pow(2, prev.retryCount),
+            10000 // Max 10 second delay
+          );
+
           setTimeout(() => {
             authenticateWithPi(maxRetries);
-          }, 1000 * newRetryCount);
+          }, delay);
         }
 
         return {
           isAuthenticating: shouldRetry,
           error: formattedError,
-          retryCount: newRetryCount
+          retryCount: newRetryCount,
+          lastAttempt: Date.now()
         };
       });
 
@@ -117,14 +153,16 @@ export function useUser() {
       setAuthState({
         isAuthenticating: false,
         error: null,
-        retryCount: 0
+        retryCount: 0,
+        lastAttempt: null
       });
       
       return { ok: true };
     } catch (error: any) {
       return { 
         ok: false, 
-        message: error.message 
+        message: error.message,
+        code: "LOGOUT_ERROR"
       };
     }
   };
