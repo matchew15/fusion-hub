@@ -1,14 +1,37 @@
+// Type definitions for Pi Network SDK
+interface PiNetwork {
+  init(config: { version: string }): Promise<void>;
+  authenticate(
+    scopes: string[],
+    options: { onIncompletePaymentFound: (payment: PiPayment) => Promise<void> }
+  ): Promise<{ user: { uid: string } }>;
+  createPayment(payment: {
+    amount: number;
+    memo: string;
+    metadata: Record<string, any>;
+  }): Promise<PiPayment>;
+  completePayment(identifier: string): Promise<void>;
+}
+
 interface PiPayment {
   amount: number;
   memo: string;
   metadata: Record<string, any>;
+  identifier?: string;
+}
+
+// Declare Pi SDK on window object
+declare global {
+  interface Window {
+    Pi?: PiNetwork;
+  }
 }
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
 
 class PiHelper {
-  private sdk: any;
+  private sdk: PiNetwork | null = null;
   private initialized = false;
   private initializationPromise: Promise<void> | null = null;
 
@@ -31,8 +54,18 @@ class PiHelper {
     }
   }
 
+  isPiBrowser(): boolean {
+    return typeof window !== 'undefined' && 'Pi' in window;
+  }
+
   async init(): Promise<void> {
     if (this.initialized) return;
+
+    if (!this.isPiBrowser()) {
+      throw new Error(
+        'Pi SDK not available. Please open this application in the Pi Browser to access wallet features.'
+      );
+    }
 
     // Return existing initialization if in progress
     if (this.initializationPromise) {
@@ -40,17 +73,15 @@ class PiHelper {
     }
 
     this.initializationPromise = this.retryOperation(async () => {
-      if (typeof window === 'undefined' || !window.Pi) {
-        throw new Error('Pi SDK not available. Please make sure you are using the Pi Browser.');
-      }
-
       try {
-        this.sdk = window.Pi;
+        this.sdk = window.Pi!;
         await this.sdk.init({ version: "2.0" });
         this.initialized = true;
       } catch (error) {
         console.error('Failed to initialize Pi SDK:', error);
-        throw new Error('Failed to initialize Pi SDK. Please try again.');
+        throw new Error(
+          'Failed to initialize Pi Network SDK. Please check your internet connection and try again.'
+        );
       }
     });
 
@@ -58,13 +89,19 @@ class PiHelper {
   }
 
   async authenticate(): Promise<string> {
+    if (!this.isPiBrowser()) {
+      throw new Error(
+        'Authentication failed. Please open this application in the Pi Browser.'
+      );
+    }
+
     if (!this.initialized) {
       await this.init();
     }
 
     return this.retryOperation(async () => {
       try {
-        const auth = await this.sdk.authenticate(["payments"], {
+        const auth = await this.sdk!.authenticate(["payments"], {
           onIncompletePaymentFound: this.handleIncompletePayment.bind(this)
         });
         return auth.user.uid;
@@ -78,13 +115,19 @@ class PiHelper {
   }
 
   async createPayment(payment: PiPayment) {
+    if (!this.isPiBrowser()) {
+      throw new Error(
+        'Payment creation failed. Please open this application in the Pi Browser.'
+      );
+    }
+
     if (!this.initialized) {
       await this.init();
     }
 
     return this.retryOperation(async () => {
       try {
-        const paymentData = await this.sdk.createPayment({
+        const paymentData = await this.sdk!.createPayment({
           amount: payment.amount,
           memo: payment.memo,
           metadata: payment.metadata
@@ -99,10 +142,10 @@ class PiHelper {
     });
   }
 
-  private async handleIncompletePayment(payment: any) {
+  private async handleIncompletePayment(payment: PiPayment) {
     return this.retryOperation(async () => {
       try {
-        await this.sdk.completePayment(payment.identifier);
+        await this.sdk!.completePayment(payment.identifier!);
       } catch (error: any) {
         console.error('Failed to complete payment:', error);
         throw new Error(
