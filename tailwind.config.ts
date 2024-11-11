@@ -13,9 +13,9 @@ export default {
       colors: {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
-        neonBlue: 'hsl(170, 100%, 50%)',
-        neonPurple: 'hsl(280, 100%, 50%)',
-        neonPink: 'hsl(320, 100%, 50%)',
+        neonBlue: 'hsl(170, 85%, 50%)',
+        neonPurple: 'hsl(280, 85%, 50%)',
+        neonPink: 'hsl(320, 85%, 50%)',
         card: {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))'
@@ -76,17 +76,17 @@ export default {
         },
         glow: {
           '0%, 100%': { 
-            boxShadow: '0 0 5px var(--glow-color), 0 0 10px var(--glow-color), 0 0 15px var(--glow-color)'
+            boxShadow: '0 0 2px var(--glow-color), 0 0 5px var(--glow-color), 0 0 8px var(--glow-color)'
           },
           '50%': {
-            boxShadow: '0 0 10px var(--glow-color), 0 0 20px var(--glow-color), 0 0 30px var(--glow-color)'
+            boxShadow: '0 0 4px var(--glow-color), 0 0 8px var(--glow-color), 0 0 12px var(--glow-color)'
           }
         }
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        'glow': 'glow 2s ease-in-out infinite'
+        'glow': 'glow 2s cubic-bezier(0.4, 0, 0.2, 1) infinite'
       }
     }
   },

@@ -5,7 +5,7 @@ import { theme } from "@/lib/theme"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium antialiased subpixel-antialiased ring-offset-background transition-all duration-400 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -18,10 +18,10 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
-        neon: `relative bg-transparent border border-neonBlue text-neonBlue ${theme.effects.neonGlow(theme.colors.neonBlue)}`,
-        neonPurple: `relative bg-transparent border border-neonPurple text-neonPurple ${theme.effects.neonGlow(theme.colors.neonPurple)}`,
-        neonPink: `relative bg-transparent border border-neonPink text-neonPink ${theme.effects.neonGlow(theme.colors.neonPink)}`,
-        holographic: `relative text-white ${theme.effects.holographicGradient}`,
+        neon: `relative bg-transparent border border-neonBlue text-neonBlue contrast-125 ${theme.effects.neonGlow(theme.colors.neonBlue)}`,
+        neonPurple: `relative bg-transparent border border-neonPurple text-neonPurple contrast-125 ${theme.effects.neonGlow(theme.colors.neonPurple)}`,
+        neonPink: `relative bg-transparent border border-neonPink text-neonPink contrast-125 ${theme.effects.neonGlow(theme.colors.neonPink)}`,
+        holographic: `relative text-white contrast-125 ${theme.effects.holographicGradient}`,
       },
       size: {
         default: "h-10 px-4 py-2",
