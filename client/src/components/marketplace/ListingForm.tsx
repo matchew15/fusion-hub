@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { QRCodeSVG } from "qrcode.react";
 import { Loader2, Upload, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import imageCompression from "browser-image-compression";
 import {
   Select,
   SelectContent,
@@ -30,10 +31,12 @@ interface ListingFormProps {
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const MAX_IMAGE_DIMENSION = 800;
 
 export default function ListingForm({ onSuccess }: ListingFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
   const [previewQR, setPreviewQR] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -63,10 +66,36 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
 
     if (file.size > MAX_FILE_SIZE) {
       toast({
-        variant: "destructive",
-        title: "File too large",
-        description: "Please upload an image smaller than 5MB.",
+        title: "Compressing image",
+        description: "Please wait while we optimize your image...",
       });
+      
+      try {
+        setIsCompressing(true);
+        const options = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: MAX_IMAGE_DIMENSION,
+          useWebWorker: true,
+        };
+        
+        const compressedFile = await imageCompression(file, options);
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64String = reader.result as string;
+          setImagePreview(base64String);
+          form.setValue("image", base64String);
+          setIsCompressing(false);
+        };
+        reader.readAsDataURL(compressedFile);
+      } catch (error: any) {
+        console.error("Image compression error:", error);
+        toast({
+          variant: "destructive",
+          title: "Compression failed",
+          description: "Please try a different image or reduce the image size manually.",
+        });
+        setIsCompressing(false);
+      }
       return;
     }
 
@@ -130,7 +159,8 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
         className="flex flex-col w-full h-[85dvh] overflow-y-auto overscroll-none touch-pan-y px-4 sm:px-6 pb-6"
         style={{
           scrollbarWidth: 'none',
-          msOverflowStyle: 'none'
+          msOverflowStyle: 'none',
+          WebkitOverflowScrolling: 'touch'
         }}
       >
         <div className="flex-1 space-y-6 py-6">
@@ -243,9 +273,19 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
                       variant="outline"
                       className="w-full h-12 cyber-panel neon-focus"
                       onClick={() => fileInputRef.current?.click()}
+                      disabled={isCompressing}
                     >
-                      <Upload className="mr-2 h-4 w-4" />
-                      Upload Image
+                      {isCompressing ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Optimizing Image...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="mr-2 h-4 w-4" />
+                          Upload Image
+                        </>
+                      )}
                     </Button>
                     {imagePreview && (
                       <div className="relative w-full h-48 rounded-lg overflow-hidden cyber-panel">
@@ -306,7 +346,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
           <Button 
             type="submit" 
             className="w-full h-12 text-base neon-border"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isCompressing}
           >
             {isSubmitting ? (
               <>
