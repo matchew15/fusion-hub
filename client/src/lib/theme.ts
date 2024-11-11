@@ -10,15 +10,32 @@ export const theme = {
     neonGlow: (color: string) => `
       box-shadow: 0 0 5px ${color},
                  0 0 10px ${color},
-                 0 0 15px ${color};
+                 0 0 15px ${color},
+                 0 0 20px ${color}; 
+      transition: box-shadow 0.3s ease-in-out;
+      &:hover {
+        box-shadow: 0 0 8px ${color},
+                   0 0 16px ${color},
+                   0 0 24px ${color},
+                   0 0 32px ${color};
+      }
     `,
     holographicGradient: `
       background: linear-gradient(
         45deg,
-        hsla(170, 100%, 50%, 0.1),
-        hsla(280, 100%, 50%, 0.1),
-        hsla(320, 100%, 50%, 0.1)
+        hsla(170, 100%, 50%, 0.15),
+        hsla(280, 100%, 50%, 0.15),
+        hsla(320, 100%, 50%, 0.15)
       );
+      transition: background 0.3s ease-in-out;
+      &:hover {
+        background: linear-gradient(
+          45deg,
+          hsla(170, 100%, 50%, 0.25),
+          hsla(280, 100%, 50%, 0.25),
+          hsla(320, 100%, 50%, 0.25)
+        );
+      }
     `,
   },
 };
