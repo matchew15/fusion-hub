@@ -18,14 +18,16 @@ export default function Wallet() {
   useEffect(() => {
     if (user) {
       // Initialize Pi SDK silently without showing errors
-      piHelper.init().catch(() => {});
+      piHelper.init().catch((error) => {
+        console.warn("Silent Pi SDK initialization failed:", error);
+      });
     }
   }, [user]);
 
   const handleConnectWallet = async () => {
     setIsConnecting(true);
     try {
-      await piHelper.authenticate();
+      const uid = await piHelper.authenticate();
       // In a real app, you'd fetch the actual balance here
       setBalance(100);
       toast({
@@ -33,12 +35,21 @@ export default function Wallet() {
         description: "Wallet connected successfully",
       });
     } catch (error: any) {
+      const errorMessage = error.code 
+        ? `Error (${error.code}): ${error.message}`
+        : error.message || "Failed to connect wallet. Please try again.";
+      
       toast({
         variant: "destructive",
-        title: "Error",
-        description: error.message || "Failed to connect wallet. Please try again.",
+        title: "Connection Failed",
+        description: errorMessage,
       });
-      console.error("Failed to connect wallet:", error);
+      console.error("Wallet connection error:", {
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        stack: error.stack
+      });
     } finally {
       setIsConnecting(false);
     }
@@ -47,14 +58,14 @@ export default function Wallet() {
   if (!piHelper.isPiBrowser()) {
     return (
       <Card className="cyber-panel p-6 text-center">
-        <p className="text-lg mb-4">
+        <p className="text-lg mb-4 glow-text">
           Please open this application in Pi Browser to access wallet features
         </p>
         <a
           href="https://minepi.com/pi-browser"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary hover:underline"
+          className="text-primary hover:underline neon-focus"
         >
           Download Pi Browser
         </a>
@@ -65,7 +76,7 @@ export default function Wallet() {
   if (!user) {
     return (
       <Card className="cyber-panel p-6 text-center">
-        <p>Please login to access your wallet</p>
+        <p className="glow-text">Please login to access your wallet</p>
       </Card>
     );
   }
@@ -76,13 +87,13 @@ export default function Wallet() {
 
       <Card className="cyber-panel p-6">
         <div className="space-y-4">
-          <h2 className="text-2xl font-semibold">Balance</h2>
+          <h2 className="text-2xl font-semibold glow-text">Balance</h2>
           {balance !== null ? (
-            <p className="text-4xl font-bold text-primary">{balance} π</p>
+            <p className="text-4xl font-bold text-primary glow-text">{balance} π</p>
           ) : (
             <Button
               onClick={handleConnectWallet}
-              className="neon-border"
+              className="neon-focus"
               disabled={isConnecting}
             >
               {isConnecting ? (
@@ -99,7 +110,7 @@ export default function Wallet() {
       </Card>
 
       <div className="space-y-4">
-        <h2 className="text-2xl font-semibold">Transaction History</h2>
+        <h2 className="text-2xl font-semibold glow-text">Transaction History</h2>
         {transactions?.length === 0 && (
           <Card className="cyber-panel p-4 text-center text-muted-foreground">
             No transactions yet
@@ -109,14 +120,14 @@ export default function Wallet() {
           <Card key={tx.id} className="cyber-panel p-4">
             <div className="flex justify-between items-center">
               <div>
-                <p className="font-medium">
+                <p className="font-medium glow-text">
                   {tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {new Date(tx.createdAt).toLocaleDateString()}
                 </p>
               </div>
-              <p className="text-xl font-bold text-primary">{tx.amount} π</p>
+              <p className="text-xl font-bold text-primary glow-text">{tx.amount} π</p>
             </div>
           </Card>
         ))}

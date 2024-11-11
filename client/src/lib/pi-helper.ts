@@ -1,6 +1,6 @@
 // Type definitions for Pi Network SDK
 interface PiNetwork {
-  init(config: { version: string }): Promise<void>;
+  init(config: { version: string; sandbox?: boolean }): Promise<void>;
   authenticate(
     scopes: string[],
     options: { onIncompletePaymentFound: (payment: PiPayment) => Promise<void> }
@@ -20,6 +20,11 @@ interface PiPayment {
   identifier?: string;
 }
 
+interface PiError extends Error {
+  code?: string;
+  details?: any;
+}
+
 declare global {
   interface Window {
     Pi?: PiNetwork;
@@ -28,6 +33,7 @@ declare global {
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
+const REQUIRED_SCOPES = ['username', 'payments', 'wallet_address'];
 
 class PiHelper {
   private sdk: PiNetwork | null = null;
@@ -39,21 +45,47 @@ class PiHelper {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  private formatError(error: any, context: string): PiError {
+    const formattedError = new Error() as PiError;
+    formattedError.name = 'PiSDKError';
+    formattedError.message = error?.message || 'Unknown error occurred';
+    formattedError.code = error?.code;
+    formattedError.details = error?.details;
+    formattedError.stack = error?.stack;
+    
+    // Log detailed error information
+    console.error(`Pi SDK Error (${context}):`, {
+      message: formattedError.message,
+      code: formattedError.code,
+      details: formattedError.details,
+      stack: formattedError.stack,
+      context
+    });
+
+    return formattedError;
+  }
+
   private async retryOperation<T>(
     operation: () => Promise<T>,
     retries = MAX_RETRIES,
     context: string = ''
   ): Promise<T> {
-    try {
-      return await operation();
-    } catch (error: any) {
-      console.error(`Pi SDK error (${context}):`, error);
-      if (retries > 0) {
-        await this.delay(RETRY_DELAY);
-        return this.retryOperation(operation, retries - 1, context);
+    let lastError: any;
+    
+    for (let attempt = 1; attempt <= retries + 1; attempt++) {
+      try {
+        return await operation();
+      } catch (error: any) {
+        lastError = this.formatError(error, `${context} (Attempt ${attempt}/${retries + 1})`);
+        
+        if (attempt <= retries) {
+          console.warn(`Retrying operation (${context}), attempt ${attempt + 1}/${retries + 1}`);
+          await this.delay(RETRY_DELAY * attempt);
+        }
       }
-      throw new Error(`Pi SDK operation failed (${context}): ${error.message}`);
     }
+    
+    throw lastError;
   }
 
   isPiBrowser(): boolean {
@@ -80,12 +112,18 @@ class PiHelper {
     this.initializationPromise = this.retryOperation(async () => {
       try {
         this.sdk = window.Pi!;
-        await this.sdk.init({ version: "2.0" });
+        const config = {
+          version: "2.0",
+          sandbox: process.env.NODE_ENV !== "production"
+        };
+        await this.sdk.init(config);
         this.initialized = true;
         this.initializationError = null;
+        console.info('Pi SDK initialized successfully');
       } catch (error: any) {
-        this.initializationError = new Error(
-          'Failed to initialize Pi Network SDK. Please check your connection.'
+        this.initializationError = this.formatError(
+          error,
+          'SDK Initialization'
         );
         throw this.initializationError;
       }
@@ -100,19 +138,25 @@ class PiHelper {
     }
 
     if (!this.initialized) {
+      console.info('Initializing Pi SDK before authentication');
       await this.init();
     }
 
     return this.retryOperation(async () => {
       try {
-        const auth = await this.sdk!.authenticate(["payments"], {
+        console.info('Starting Pi authentication with scopes:', REQUIRED_SCOPES);
+        const auth = await this.sdk!.authenticate(REQUIRED_SCOPES, {
           onIncompletePaymentFound: this.handleIncompletePayment.bind(this)
         });
+        
+        if (!auth?.user?.uid) {
+          throw new Error('Authentication response missing user ID');
+        }
+        
+        console.info('Pi authentication successful');
         return auth.user.uid;
       } catch (error: any) {
-        throw new Error(
-          error.message || 'Pi Network authentication failed. Please try again.'
-        );
+        throw this.formatError(error, 'Authentication');
       }
     }, MAX_RETRIES, 'authentication');
   }
@@ -128,16 +172,16 @@ class PiHelper {
 
     return this.retryOperation(async () => {
       try {
+        console.info('Creating payment:', payment);
         const paymentData = await this.sdk!.createPayment({
           amount: payment.amount,
           memo: payment.memo,
           metadata: payment.metadata
         });
+        console.info('Payment created successfully');
         return paymentData;
       } catch (error: any) {
-        throw new Error(
-          error.message || 'Payment creation failed. Please try again.'
-        );
+        throw this.formatError(error, 'Payment Creation');
       }
     }, MAX_RETRIES, 'payment-creation');
   }
@@ -145,11 +189,11 @@ class PiHelper {
   private async handleIncompletePayment(payment: PiPayment) {
     return this.retryOperation(async () => {
       try {
+        console.info('Handling incomplete payment:', payment);
         await this.sdk!.completePayment(payment.identifier!);
+        console.info('Incomplete payment handled successfully');
       } catch (error: any) {
-        throw new Error(
-          error.message || 'Failed to complete existing payment.'
-        );
+        throw this.formatError(error, 'Incomplete Payment Handling');
       }
     }, MAX_RETRIES, 'incomplete-payment');
   }
