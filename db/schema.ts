@@ -17,7 +17,8 @@ export const listings = pgTable("listings", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-  image: text("image"),
+  type: text("type").notNull(), // "Product" or "Service"
+  image: text("image").notNull(),
   active: boolean("active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -46,8 +47,15 @@ export const insertUserSchema = createInsertSchema(users, {
   piAccessToken: z.string().optional(),
   piWalletAddress: z.string().optional(),
 });
+
 export const selectUserSchema = createSelectSchema(users);
-export const insertListingSchema = createInsertSchema(listings);
+
+export const insertListingSchema = createInsertSchema(listings, {
+  price: z.number().min(0).multipleOf(0.01),
+  type: z.enum(["Product", "Service"]),
+  image: z.string().startsWith("data:image/").min(1),
+});
+
 export const selectListingSchema = createSelectSchema(listings);
 export const insertChatSchema = createInsertSchema(chats);
 export const selectChatSchema = createSelectSchema(chats);

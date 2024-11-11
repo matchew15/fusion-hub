@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertListingSchema } from "db/schema";
@@ -6,8 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { QRCodeSVG } from "qrcode.react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Form,
   FormControl,
@@ -21,10 +28,15 @@ interface ListingFormProps {
   onSuccess: () => void;
 }
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
 export default function ListingForm({ onSuccess }: ListingFormProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [previewQR, setPreviewQR] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm({
     resolver: zodResolver(insertListingSchema),
@@ -32,15 +44,47 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
       title: "",
       description: "",
       price: 0,
+      type: "Product",
       image: "",
     },
   });
+
+  const handleImageUpload = async (file: File) => {
+    if (!file) return;
+
+    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid file type",
+        description: "Please upload a JPEG, PNG, or WebP image.",
+      });
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      toast({
+        variant: "destructive",
+        title: "File too large",
+        description: "Please upload an image smaller than 5MB.",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setImagePreview(base64String);
+      form.setValue("image", base64String);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const generatePreviewQR = (values: any) => {
     const listingData = {
       title: values.title,
       description: values.description,
       price: values.price,
+      type: values.type,
     };
     setPreviewQR(JSON.stringify(listingData));
   };
@@ -66,6 +110,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
       onSuccess();
       form.reset();
       setPreviewQR(null);
+      setImagePreview(null);
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -85,7 +130,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
         className="flex flex-col w-full h-[85dvh] overflow-y-auto overscroll-none touch-pan-y px-4 sm:px-6 pb-6"
         style={{
           scrollbarWidth: 'none',
-          '-webkit-overflow-scrolling': 'touch'
+          msOverflowStyle: 'none'
         }}
       >
         <div className="flex-1 space-y-6 py-6">
@@ -136,11 +181,15 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
                     <Input
                       type="number"
                       step="0.01"
+                      min="0"
                       inputMode="decimal"
                       className="cyber-panel neon-focus h-12 px-4 w-full"
                       placeholder="0.00"
                       {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value);
+                        field.onChange(value >= 0 ? value : 0);
+                      }}
                     />
                   </FormControl>
                   <FormMessage className="text-sm" />
@@ -150,22 +199,84 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
 
             <FormField
               control={form.control}
-              name="image"
+              name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base font-medium">Image URL</FormLabel>
-                  <FormControl>
-                    <Input 
-                      className="cyber-panel neon-focus h-12 px-4 w-full"
-                      placeholder="Enter image URL"
-                      {...field} 
-                    />
-                  </FormControl>
+                  <FormLabel className="text-base font-medium">Type</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="cyber-panel neon-focus h-12">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Product">Product</SelectItem>
+                      <SelectItem value="Service">Service</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage className="text-sm" />
                 </FormItem>
               )}
             />
           </div>
+
+          <FormField
+            control={form.control}
+            name="image"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-base font-medium">Image</FormLabel>
+                <FormControl>
+                  <div className="space-y-4">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      ref={fileInputRef}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleImageUpload(file);
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full h-12 cyber-panel neon-focus"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload Image
+                    </Button>
+                    {imagePreview && (
+                      <div className="relative w-full h-48 rounded-lg overflow-hidden cyber-panel">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute top-2 right-2"
+                          onClick={() => {
+                            setImagePreview(null);
+                            field.onChange("");
+                            if (fileInputRef.current) {
+                              fileInputRef.current.value = "";
+                            }
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </FormControl>
+                <FormMessage className="text-sm" />
+              </FormItem>
+            )}
+          />
         </div>
 
         <div className="space-y-6 mt-auto pt-6 border-t border-border/10">
@@ -183,7 +294,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               <div className="relative w-full max-w-[200px] aspect-square bg-white rounded-lg p-4">
                 <QRCodeSVG
                   value={previewQR}
-                  size="100%"
+                  size={200}
                   level="H"
                   includeMargin={false}
                   className="w-full h-full animate-in fade-in-50"
