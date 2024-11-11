@@ -19,6 +19,7 @@ export const listings = pgTable("listings", {
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   type: text("type").notNull(), // "Product" or "Service"
   image: text("image").notNull(),
+  location: text("location"),
   active: boolean("active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -54,6 +55,7 @@ export const insertListingSchema = createInsertSchema(listings, {
   price: z.number().min(0).multipleOf(0.01),
   type: z.enum(["Product", "Service"]),
   image: z.string().startsWith("data:image/").min(1),
+  location: z.string().min(1, "Location is required"),
 });
 
 export const selectListingSchema = createSelectSchema(listings);

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { QRCodeSVG } from "qrcode.react";
-import { Loader2, Upload, X } from "lucide-react";
+import { Loader2, Upload, X, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import imageCompression from "browser-image-compression";
 import {
@@ -49,6 +49,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
       price: 0,
       type: "Product",
       image: "",
+      location: "",
     },
   });
 
@@ -64,48 +65,32 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
       return;
     }
 
-    if (file.size > MAX_FILE_SIZE) {
-      toast({
-        title: "Compressing image",
-        description: "Please wait while we optimize your image...",
-      });
+    try {
+      setIsCompressing(true);
+      const options = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: MAX_IMAGE_DIMENSION,
+        useWebWorker: true,
+      };
       
-      try {
-        setIsCompressing(true);
-        const options = {
-          maxSizeMB: 1,
-          maxWidthOrHeight: MAX_IMAGE_DIMENSION,
-          useWebWorker: true,
-        };
-        
-        const compressedFile = await imageCompression(file, options);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64String = reader.result as string;
-          setImagePreview(base64String);
-          form.setValue("image", base64String);
-          setIsCompressing(false);
-        };
-        reader.readAsDataURL(compressedFile);
-      } catch (error: any) {
-        console.error("Image compression error:", error);
-        toast({
-          variant: "destructive",
-          title: "Compression failed",
-          description: "Please try a different image or reduce the image size manually.",
-        });
+      const compressedFile = await imageCompression(file, options);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setImagePreview(base64String);
+        form.setValue("image", base64String);
         setIsCompressing(false);
-      }
-      return;
+      };
+      reader.readAsDataURL(compressedFile);
+    } catch (error: any) {
+      console.error("Image compression error:", error);
+      toast({
+        variant: "destructive",
+        title: "Compression failed",
+        description: "Please try a different image or reduce the image size manually.",
+      });
+      setIsCompressing(false);
     }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      setImagePreview(base64String);
-      form.setValue("image", base64String);
-    };
-    reader.readAsDataURL(file);
   };
 
   const generatePreviewQR = (values: any) => {
@@ -114,6 +99,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
       description: values.description,
       price: values.price,
       type: values.type,
+      location: values.location,
     };
     setPreviewQR(JSON.stringify(listingData));
   };
@@ -160,66 +146,23 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
         style={{
           scrollbarWidth: 'none',
           msOverflowStyle: 'none',
-          WebkitOverflowScrolling: 'touch'
+          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-y pinch-zoom',
         }}
       >
         <div className="flex-1 space-y-6 py-6">
-          <FormField
-            control={form.control}
-            name="title"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-base font-medium">Title</FormLabel>
-                <FormControl>
-                  <Input 
-                    className="cyber-panel neon-focus h-12 px-4 w-full"
-                    placeholder="Enter listing title"
-                    {...field} 
-                  />
-                </FormControl>
-                <FormMessage className="text-sm" />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-base font-medium">Description</FormLabel>
-                <FormControl>
-                  <Textarea 
-                    className="cyber-panel neon-focus min-h-[120px] p-4 text-base w-full resize-y"
-                    placeholder="Enter listing description"
-                    {...field} 
-                  />
-                </FormControl>
-                <FormMessage className="text-sm" />
-              </FormItem>
-            )}
-          />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             <FormField
               control={form.control}
-              name="price"
+              name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base font-medium">Price (π)</FormLabel>
+                  <FormLabel className="text-base font-medium">Title</FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      inputMode="decimal"
+                    <Input 
                       className="cyber-panel neon-focus h-12 px-4 w-full"
-                      placeholder="0.00"
-                      {...field}
-                      onChange={(e) => {
-                        const value = parseFloat(e.target.value);
-                        field.onChange(value >= 0 ? value : 0);
-                      }}
+                      placeholder="Enter listing title"
+                      {...field} 
                     />
                   </FormControl>
                   <FormMessage className="text-sm" />
@@ -229,97 +172,164 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
 
             <FormField
               control={form.control}
-              name="type"
+              name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base font-medium">Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormLabel className="text-base font-medium">Description</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      className="cyber-panel neon-focus min-h-[120px] p-4 text-base w-full resize-y"
+                      placeholder="Enter listing description"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage className="text-sm" />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-base font-medium">Price (π)</FormLabel>
                     <FormControl>
-                      <SelectTrigger className="cyber-panel neon-focus h-12">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        inputMode="decimal"
+                        className="cyber-panel neon-focus h-12 px-4 w-full"
+                        placeholder="0.00"
+                        {...field}
+                        onChange={(e) => {
+                          const value = parseFloat(e.target.value);
+                          field.onChange(value >= 0 ? Math.min(value, 9999999.99) : 0);
+                        }}
+                      />
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Product">Product</SelectItem>
-                      <SelectItem value="Service">Service</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    <FormMessage className="text-sm" />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-base font-medium">Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="cyber-panel neon-focus h-12">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Product">Product</SelectItem>
+                        <SelectItem value="Service">Service</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="text-sm" />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="location"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-base font-medium">Location</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Input 
+                        className="cyber-panel neon-focus h-12 pl-10 pr-4 w-full"
+                        placeholder="Enter your location"
+                        {...field} 
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage className="text-sm" />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="image"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-base font-medium">Image</FormLabel>
+                  <FormControl>
+                    <div className="space-y-4">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleImageUpload(file);
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full h-12 cyber-panel neon-focus"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isCompressing}
+                      >
+                        {isCompressing ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Optimizing Image...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Upload Image
+                          </>
+                        )}
+                      </Button>
+                      {imagePreview && (
+                        <div className="relative w-full h-48 rounded-lg overflow-hidden cyber-panel">
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-2 right-2"
+                            onClick={() => {
+                              setImagePreview(null);
+                              field.onChange("");
+                              if (fileInputRef.current) {
+                                fileInputRef.current.value = "";
+                              }
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </FormControl>
                   <FormMessage className="text-sm" />
                 </FormItem>
               )}
             />
           </div>
-
-          <FormField
-            control={form.control}
-            name="image"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-base font-medium">Image</FormLabel>
-                <FormControl>
-                  <div className="space-y-4">
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      className="hidden"
-                      ref={fileInputRef}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleImageUpload(file);
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full h-12 cyber-panel neon-focus"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isCompressing}
-                    >
-                      {isCompressing ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Optimizing Image...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="mr-2 h-4 w-4" />
-                          Upload Image
-                        </>
-                      )}
-                    </Button>
-                    {imagePreview && (
-                      <div className="relative w-full h-48 rounded-lg overflow-hidden cyber-panel">
-                        <img
-                          src={imagePreview}
-                          alt="Preview"
-                          className="w-full h-full object-cover"
-                        />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="absolute top-2 right-2"
-                          onClick={() => {
-                            setImagePreview(null);
-                            field.onChange("");
-                            if (fileInputRef.current) {
-                              fileInputRef.current.value = "";
-                            }
-                          }}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </FormControl>
-                <FormMessage className="text-sm" />
-              </FormItem>
-            )}
-          />
         </div>
 
-        <div className="space-y-6 mt-auto pt-6 border-t border-border/10">
+        <div className="sticky bottom-0 space-y-6 pt-6 border-t border-border/10 bg-background/80 backdrop-blur">
           <Button
             type="button"
             variant="outline"

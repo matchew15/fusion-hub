@@ -30,12 +30,56 @@ export function registerRoutes(app: Express) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const listing = await db.insert(listings).values({
-      ...req.body,
-      sellerId: req.user.id,
-    }).returning();
-    
-    res.json(listing[0]);
+    try {
+      const listing = await db.insert(listings).values({
+        ...req.body,
+        sellerId: req.user.id,
+      }).returning();
+      
+      res.json(listing[0]);
+    } catch (error: any) {
+      console.error("Failed to create listing:", error);
+      res.status(500).json({ 
+        message: "Failed to create listing",
+        details: error.message 
+      });
+    }
+  });
+
+  // New DELETE endpoint for listings
+  app.delete("/api/listings/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const [listing] = await db
+        .select()
+        .from(listings)
+        .where(eq(listings.id, parseInt(req.params.id)))
+        .limit(1);
+
+      if (!listing) {
+        return res.status(404).json({ message: "Listing not found" });
+      }
+
+      if (listing.sellerId !== req.user.id) {
+        return res.status(403).json({ message: "Not authorized to delete this listing" });
+      }
+
+      await db
+        .update(listings)
+        .set({ active: false })
+        .where(eq(listings.id, parseInt(req.params.id)));
+
+      res.json({ message: "Listing deleted successfully" });
+    } catch (error: any) {
+      console.error("Failed to delete listing:", error);
+      res.status(500).json({ 
+        message: "Failed to delete listing",
+        details: error.message 
+      });
+    }
   });
 
   // Users route for chat
