@@ -28,7 +28,7 @@ export default function Marketplace() {
             <DialogTrigger asChild>
               <Button className="neon-border">Create Listing</Button>
             </DialogTrigger>
-            <DialogContent className="fixed inset-4 w-auto h-[calc(100vh-2rem)] max-w-4xl bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-0 cyber-panel">
+            <DialogContent className="fixed inset-4 w-auto max-h-[calc(100dvh-2rem)] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-0 cyber-panel overflow-hidden">
               <ListingForm onSuccess={() => mutate()} />
             </DialogContent>
           </Dialog>
