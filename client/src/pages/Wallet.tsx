@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/hooks/use-user";
 import { piHelper } from "@/lib/pi-helper";
@@ -9,25 +9,39 @@ import useSWR from "swr";
 import type { Transaction } from "db/schema";
 
 export default function Wallet() {
-  const { user } = useUser();
+  const { user, isAuthenticating, retryCount, error } = useUser();
   const { toast } = useToast();
   const [balance, setBalance] = useState<number | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const { data: transactions } = useSWR<Transaction[]>("/api/transactions");
 
+  // Initialize Pi SDK on component mount
   useEffect(() => {
-    if (user) {
-      // Initialize Pi SDK silently without showing errors
-      piHelper.init().catch((error) => {
-        console.warn("Silent Pi SDK initialization failed:", error);
-      });
-    }
-  }, [user]);
+    const initializePiSDK = async () => {
+      if (!user) return;
 
-  const handleConnectWallet = async () => {
+      try {
+        await piHelper.init();
+        console.info("Pi SDK initialized successfully");
+      } catch (error: any) {
+        console.warn("Pi SDK initialization failed:", error);
+        toast({
+          variant: "destructive",
+          title: "Initialization Failed",
+          description: "Failed to initialize Pi SDK. Please try again.",
+        });
+      }
+    };
+
+    initializePiSDK();
+  }, [user, toast]);
+
+  const handleConnectWallet = useCallback(async () => {
+    if (isConnecting || isAuthenticating) return;
+    
     setIsConnecting(true);
     try {
-      const uid = await piHelper.authenticate();
+      await piHelper.authenticate();
       // In a real app, you'd fetch the actual balance here
       setBalance(100);
       toast({
@@ -44,15 +58,50 @@ export default function Wallet() {
         title: "Connection Failed",
         description: errorMessage,
       });
+
+      // Log detailed error information
       console.error("Wallet connection error:", {
         message: error.message,
         code: error.code,
         details: error.details,
-        stack: error.stack
+        stack: error.stack,
+        retryCount
       });
     } finally {
       setIsConnecting(false);
     }
+  }, [isConnecting, isAuthenticating, toast, retryCount]);
+
+  const renderWalletStatus = () => {
+    if (error) {
+      return (
+        <div className="flex items-center space-x-2 text-destructive">
+          <AlertCircle className="h-4 w-4" />
+          <span>{error.message}</span>
+        </div>
+      );
+    }
+
+    if (balance !== null) {
+      return <p className="text-4xl font-bold text-primary glow-text">{balance} π</p>;
+    }
+
+    return (
+      <Button
+        onClick={handleConnectWallet}
+        className="neon-focus"
+        disabled={isConnecting || isAuthenticating}
+      >
+        {isConnecting || isAuthenticating ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            {retryCount > 0 ? `Retrying (${retryCount})...` : "Connecting..."}
+          </>
+        ) : (
+          "Connect Pi Wallet"
+        )}
+      </Button>
+    );
   };
 
   if (!piHelper.isPiBrowser()) {
@@ -88,24 +137,7 @@ export default function Wallet() {
       <Card className="cyber-panel p-6">
         <div className="space-y-4">
           <h2 className="text-2xl font-semibold glow-text">Balance</h2>
-          {balance !== null ? (
-            <p className="text-4xl font-bold text-primary glow-text">{balance} π</p>
-          ) : (
-            <Button
-              onClick={handleConnectWallet}
-              className="neon-focus"
-              disabled={isConnecting}
-            >
-              {isConnecting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                "Connect Pi Wallet"
-              )}
-            </Button>
-          )}
+          {renderWalletStatus()}
         </div>
       </Card>
 
