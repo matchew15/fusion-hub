@@ -8,35 +8,35 @@ export const theme = {
   },
   effects: {
     neonGlow: (color: string) => `
-      box-shadow: 0 0 2px ${color},
-                 0 0 4px ${color},
-                 0 0 6px ${color};
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 0 1px ${color},
+                 0 0 2px ${color},
+                 0 0 3px ${color};
+      transition: all 0.2s ease-in-out;
       &:hover {
-        box-shadow: 0 0 4px ${color},
-                   0 0 8px ${color},
-                   0 0 12px ${color};
+        box-shadow: 0 0 2px ${color},
+                   0 0 4px ${color},
+                   0 0 6px ${color};
       }
     `,
     holographicGradient: `
       background: linear-gradient(
         45deg,
-        hsla(170, 85%, 50%, 0.08),
-        hsla(280, 85%, 50%, 0.08),
-        hsla(320, 85%, 50%, 0.08)
+        hsla(170, 85%, 50%, 0.05),
+        hsla(280, 85%, 50%, 0.05),
+        hsla(320, 85%, 50%, 0.05)
       );
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.2s ease-in-out;
       &:hover {
         background: linear-gradient(
           45deg,
-          hsla(170, 85%, 50%, 0.16),
-          hsla(280, 85%, 50%, 0.16),
-          hsla(320, 85%, 50%, 0.16)
+          hsla(170, 85%, 50%, 0.08),
+          hsla(280, 85%, 50%, 0.08),
+          hsla(320, 85%, 50%, 0.08)
         );
       }
     `,
     interactiveTransition: `
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.2s ease-in-out;
       &:hover {
         transform: translateY(-2px);
       }
