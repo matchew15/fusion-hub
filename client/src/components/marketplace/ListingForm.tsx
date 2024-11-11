@@ -82,18 +82,18 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
     <Form {...form}>
       <form 
         onSubmit={form.handleSubmit(onSubmit)} 
-        className="w-full max-w-2xl mx-auto p-6"
+        className="w-full max-w-2xl mx-auto space-y-8 px-4 sm:px-6"
       >
-        <div className="grid gap-6 w-full mb-6">
+        <div className="space-y-6">
           <FormField
             control={form.control}
             name="title"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-foreground text-base font-medium">Title</FormLabel>
+                <FormLabel className="text-base font-medium">Title</FormLabel>
                 <FormControl>
                   <Input 
-                    className="cyber-panel neon-focus h-12 px-4"
+                    className="cyber-panel neon-focus h-12 px-4 w-full"
                     placeholder="Enter listing title"
                     {...field} 
                   />
@@ -108,10 +108,10 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
             name="description"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-foreground text-base font-medium">Description</FormLabel>
+                <FormLabel className="text-base font-medium">Description</FormLabel>
                 <FormControl>
                   <Textarea 
-                    className="cyber-panel neon-focus min-h-[120px] p-4 text-base"
+                    className="cyber-panel neon-focus min-h-[120px] p-4 text-base w-full resize-y"
                     placeholder="Enter listing description"
                     {...field} 
                   />
@@ -121,21 +121,21 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
             )}
           />
 
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <FormField
               control={form.control}
               name="price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-foreground text-base font-medium">Price (π)</FormLabel>
+                  <FormLabel className="text-base font-medium">Price (π)</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
                       step="0.01"
-                      className="cyber-panel neon-focus h-12 px-4"
+                      className="cyber-panel neon-focus h-12 px-4 w-full"
                       placeholder="0.00"
                       {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                     />
                   </FormControl>
                   <FormMessage className="text-sm" />
@@ -148,10 +148,10 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               name="image"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-foreground text-base font-medium">Image URL</FormLabel>
+                  <FormLabel className="text-base font-medium">Image URL</FormLabel>
                   <FormControl>
                     <Input 
-                      className="cyber-panel neon-focus h-12 px-4"
+                      className="cyber-panel neon-focus h-12 px-4 w-full"
                       placeholder="Enter image URL"
                       {...field} 
                     />
@@ -163,7 +163,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
           </div>
         </div>
 
-        <div className="space-y-4 w-full">
+        <div className="space-y-6">
           <Button
             type="button"
             variant="outline"
@@ -174,13 +174,13 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
           </Button>
 
           {previewQR && (
-            <div className="flex justify-center p-4 bg-background/50 rounded-lg cyber-panel">
-              <div className="relative w-full max-w-[200px] aspect-square">
+            <div className="flex justify-center p-6 bg-background/50 rounded-lg cyber-panel">
+              <div className="relative w-full max-w-[200px] aspect-square bg-white rounded-lg p-4">
                 <QRCodeSVG
                   value={previewQR}
                   size="100%"
                   level="H"
-                  includeMargin
+                  includeMargin={false}
                   className="w-full h-full animate-in fade-in-50"
                 />
               </div>
