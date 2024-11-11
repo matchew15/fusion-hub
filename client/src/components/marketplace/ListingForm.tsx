@@ -82,9 +82,13 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
     <Form {...form}>
       <form 
         onSubmit={form.handleSubmit(onSubmit)} 
-        className="w-full max-w-2xl mx-auto space-y-8 px-4 sm:px-6"
+        className="flex flex-col w-full h-[85dvh] overflow-y-auto overscroll-none touch-pan-y px-4 sm:px-6 pb-6"
+        style={{
+          scrollbarWidth: 'none',
+          '-webkit-overflow-scrolling': 'touch'
+        }}
       >
-        <div className="space-y-6">
+        <div className="flex-1 space-y-6 py-6">
           <FormField
             control={form.control}
             name="title"
@@ -132,6 +136,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
                     <Input
                       type="number"
                       step="0.01"
+                      inputMode="decimal"
                       className="cyber-panel neon-focus h-12 px-4 w-full"
                       placeholder="0.00"
                       {...field}
@@ -163,7 +168,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-6 mt-auto pt-6 border-t border-border/10">
           <Button
             type="button"
             variant="outline"

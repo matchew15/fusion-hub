@@ -29,7 +29,15 @@ export default function Marketplace() {
               <Button className="neon-border">Create Listing</Button>
             </DialogTrigger>
             <DialogContent 
-              className="cyber-panel w-full max-w-4xl h-auto overflow-y-auto bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+              className="cyber-panel w-[calc(100%-2rem)] max-w-4xl max-h-[85dvh] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 overflow-hidden"
+              style={{
+                position: 'fixed',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                margin: 0,
+                padding: 0
+              }}
             >
               <ListingForm onSuccess={() => mutate()} />
             </DialogContent>
