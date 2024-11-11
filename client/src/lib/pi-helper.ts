@@ -4,7 +4,7 @@ interface PiNetwork {
   authenticate(
     scopes: string[],
     options: { onIncompletePaymentFound: (payment: PiPayment) => Promise<void> }
-  ): Promise<{ user: { uid: string } }>;
+  ): Promise<{ accessToken: string; user: { uid: string } }>;
   createPayment(payment: {
     amount: number;
     memo: string;
@@ -25,6 +25,12 @@ interface PiError extends Error {
   details?: any;
 }
 
+interface PiUserData {
+  uid: string;
+  username: string;
+  roles: string[];
+}
+
 declare global {
   interface Window {
     Pi?: PiNetwork;
@@ -33,7 +39,7 @@ declare global {
 
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
-const REQUIRED_SCOPES = ['username', 'payments', 'wallet_address'];
+const REQUIRED_SCOPES = ['payments'];
 
 class PiHelper {
   private sdk: PiNetwork | null = null;
@@ -149,11 +155,22 @@ class PiHelper {
           onIncompletePaymentFound: this.handleIncompletePayment.bind(this)
         });
         
-        if (!auth?.user?.uid) {
-          throw new Error('Authentication response missing user ID');
+        if (!auth?.accessToken || !auth?.user?.uid) {
+          throw new Error('Authentication response missing required fields');
         }
+
+        // Verify the access token with Pi Network
+        const response = await fetch('https://api.minepi.com/v2/me', {
+          headers: { 'Authorization': `Bearer ${auth.accessToken}` }
+        });
+
+        if (!response.ok) {
+          throw new Error('Token verification failed');
+        }
+
+        const userData = await response.json() as PiUserData;
+        console.info('User authentication verified:', userData);
         
-        console.info('Pi authentication successful');
         return auth.user.uid;
       } catch (error: any) {
         throw this.formatError(error, 'Authentication');
