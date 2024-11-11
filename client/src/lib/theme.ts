@@ -12,6 +12,8 @@ export const theme = {
                  0 0 2px ${color},
                  0 0 3px ${color};
       transition: all 0.2s ease-in-out;
+      margin: 0.5rem;
+      padding: 1rem;
       &:hover {
         box-shadow: 0 0 2px ${color},
                    0 0 4px ${color},
@@ -26,6 +28,8 @@ export const theme = {
         hsla(320, 85%, 50%, 0.05)
       );
       transition: all 0.2s ease-in-out;
+      padding: 1rem;
+      margin: 0.5rem;
       &:hover {
         background: linear-gradient(
           45deg,
@@ -37,6 +41,7 @@ export const theme = {
     `,
     interactiveTransition: `
       transition: all 0.2s ease-in-out;
+      margin: 0.5rem;
       &:hover {
         transform: translateY(-2px);
       }
@@ -49,6 +54,8 @@ export const theme = {
       backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.1);
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      padding: 1rem;
+      margin: 0.5rem;
     `,
   },
 };

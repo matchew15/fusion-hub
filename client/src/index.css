@@ -40,23 +40,23 @@
 
 @layer components {
   .neon-border {
-    @apply shadow-[0_0_5px_theme('colors.primary.DEFAULT'),0_0_10px_theme('colors.primary.DEFAULT'),0_0_15px_theme('colors.primary.DEFAULT')] transition-all duration-200 ease-in-out;
+    @apply shadow-[0_0_5px_theme('colors.primary.DEFAULT'),0_0_10px_theme('colors.primary.DEFAULT'),0_0_15px_theme('colors.primary.DEFAULT')] transition-all duration-200 ease-in-out p-4 m-2;
   }
 
   .cyber-panel {
-    @apply bg-black/50 backdrop-blur-sm border border-primary/30 rounded-lg shadow-[inset_0_0_10px_theme('colors.primary.DEFAULT')] transition-all duration-200 ease-in-out;
+    @apply bg-black/50 backdrop-blur-sm border border-primary/30 rounded-lg shadow-[inset_0_0_10px_theme('colors.primary.DEFAULT')] transition-all duration-200 ease-in-out p-6 m-3;
   }
 
   .glow-text {
-    @apply text-shadow-glow transition-all duration-200 ease-in-out;
+    @apply text-shadow-glow transition-all duration-200 ease-in-out px-4;
   }
 
   .interactive-element {
-    @apply transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:translate-y-0;
+    @apply transition-all duration-200 ease-in-out hover:-translate-y-0.5 active:translate-y-0 m-2;
   }
 
   .glass-panel {
-    @apply bg-white/5 backdrop-blur-md border border-white/10 shadow-lg transition-all duration-200 ease-in-out;
+    @apply bg-white/5 backdrop-blur-md border border-white/10 shadow-lg transition-all duration-200 ease-in-out p-6 m-3;
   }
 
   .neon-focus {
@@ -64,31 +64,31 @@
   }
 
   .hover-lift {
-    @apply transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0;
+    @apply transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0 m-2;
   }
 
   .menu-item {
-    @apply flex items-center px-4 py-2 text-sm rounded-md transition-all duration-200 ease-in-out hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50;
+    @apply flex items-center px-6 py-3 text-sm rounded-md transition-all duration-200 ease-in-out hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50 m-1;
   }
 
   .interactive-shadow {
-    @apply shadow-sm hover:shadow-md transition-shadow duration-200 ease-in-out;
+    @apply shadow-sm hover:shadow-md transition-shadow duration-200 ease-in-out m-2;
   }
 
   .interactive-scale {
-    @apply hover:scale-105 active:scale-100 transition-transform duration-200 ease-in-out;
+    @apply hover:scale-105 active:scale-100 transition-transform duration-200 ease-in-out m-2;
   }
 
   /* New spacing utilities for consistent hierarchy */
   .content-spacing {
-    @apply space-y-6 p-6;
+    @apply space-y-8 p-8;
   }
 
   .section-spacing {
-    @apply space-y-4 p-4;
+    @apply space-y-6 p-6;
   }
 
   .text-content {
-    @apply space-y-2 leading-relaxed;
+    @apply space-y-4 leading-relaxed px-4;
   }
 }
