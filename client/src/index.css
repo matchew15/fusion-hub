@@ -30,7 +30,7 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border antialiased;
   }
   body {
     @apply bg-background text-foreground;
@@ -40,27 +40,27 @@
 
 @layer components {
   .neon-border {
-    @apply shadow-[0_0_10px_theme('colors.primary.DEFAULT'),0_0_20px_theme('colors.primary.DEFAULT'),0_0_30px_theme('colors.primary.DEFAULT')];
+    @apply shadow-[0_0_10px_theme('colors.primary.DEFAULT'),0_0_20px_theme('colors.primary.DEFAULT'),0_0_30px_theme('colors.primary.DEFAULT')] transition-all duration-300 ease-in-out;
   }
 
   .cyber-panel {
-    @apply bg-black/50 backdrop-blur-sm border border-primary/30 rounded-lg shadow-[inset_0_0_20px_theme('colors.primary.DEFAULT')];
+    @apply bg-black/50 backdrop-blur-sm border border-primary/30 rounded-lg shadow-[inset_0_0_20px_theme('colors.primary.DEFAULT')] transition-all duration-300 ease-in-out;
   }
 
   .glow-text {
-    @apply text-shadow-glow;
+    @apply text-shadow-glow transition-all duration-300 ease-in-out;
   }
 
   .interactive-element {
-    @apply transition-all duration-[400ms] ease-in-out;
+    @apply transition-all duration-300 ease-in-out hover:-translate-y-0.5 active:translate-y-0;
   }
 
   .glass-panel {
-    @apply bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06)];
+    @apply bg-white/5 backdrop-blur-md border border-white/10 shadow-lg transition-all duration-300 ease-in-out;
   }
 
   .neon-focus {
-    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all duration-300 ease-in-out;
   }
 
   .hover-lift {
@@ -68,6 +68,14 @@
   }
 
   .menu-item {
-    @apply flex items-center px-4 py-2 text-sm rounded-md transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50;
+    @apply flex items-center px-4 py-2 text-sm rounded-md transition-all duration-300 ease-in-out hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .interactive-shadow {
+    @apply shadow-sm hover:shadow-md transition-shadow duration-300 ease-in-out;
+  }
+
+  .interactive-scale {
+    @apply hover:scale-105 active:scale-100 transition-transform duration-300 ease-in-out;
   }
 }
