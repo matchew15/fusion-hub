@@ -11,17 +11,25 @@ export default function Navbar() {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-8">
             <Link href="/">
-              <a className="text-2xl font-bold glow-text">Pi Market</a>
+              <button className="text-2xl font-bold glow-text hover:opacity-80 transition-opacity">
+                Pi Market
+              </button>
             </Link>
             <div className="hidden md:flex space-x-4">
               <Link href="/marketplace">
-                <a className="hover:text-primary transition-colors">Marketplace</a>
+                <button className="hover:text-primary transition-colors">
+                  Marketplace
+                </button>
               </Link>
               <Link href="/wallet">
-                <a className="hover:text-primary transition-colors">Wallet</a>
+                <button className="hover:text-primary transition-colors">
+                  Wallet
+                </button>
               </Link>
               <Link href="/chat">
-                <a className="hover:text-primary transition-colors">Chat</a>
+                <button className="hover:text-primary transition-colors">
+                  Chat
+                </button>
               </Link>
             </div>
           </div>
