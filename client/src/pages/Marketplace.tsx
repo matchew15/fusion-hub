@@ -28,7 +28,9 @@ export default function Marketplace() {
             <DialogTrigger asChild>
               <Button className="neon-border">Create Listing</Button>
             </DialogTrigger>
-            <DialogContent className="cyber-panel">
+            <DialogContent 
+              className="cyber-panel w-full max-w-4xl p-0 overflow-hidden bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+            >
               <ListingForm onSuccess={() => mutate()} />
             </DialogContent>
           </Dialog>
@@ -40,7 +42,7 @@ export default function Marketplace() {
           placeholder="Search listings..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="cyber-panel"
+          className="cyber-panel neon-focus"
         />
       </div>
 

@@ -79,80 +79,23 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
   };
 
   return (
-    <Form {...form}>
-      <form 
-        onSubmit={form.handleSubmit(onSubmit)} 
-        className="w-full max-w-2xl mx-auto space-y-8 px-4 sm:px-6 md:px-8"
-      >
-        <div className="grid gap-6">
-          <FormField
-            control={form.control}
-            name="title"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-foreground text-base">Title</FormLabel>
-                <FormControl>
-                  <Input 
-                    className="cyber-panel neon-focus h-12 sm:h-14 px-4"
-                    placeholder="Enter listing title"
-                    {...field} 
-                  />
-                </FormControl>
-                <FormMessage className="text-sm" />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="text-foreground text-base">Description</FormLabel>
-                <FormControl>
-                  <Textarea 
-                    className="cyber-panel neon-focus min-h-[120px] p-4 text-base"
-                    placeholder="Enter listing description"
-                    {...field} 
-                  />
-                </FormControl>
-                <FormMessage className="text-sm" />
-              </FormItem>
-            )}
-          />
-
-          <div className="grid sm:grid-cols-2 gap-6">
+    <div className="flex items-center justify-center min-h-[calc(100vh-16rem)]">
+      <Form {...form}>
+        <form 
+          onSubmit={form.handleSubmit(onSubmit)} 
+          className="flex flex-col items-center justify-center w-full max-w-2xl mx-auto space-y-8 px-4 sm:px-6 md:px-8"
+        >
+          <div className="grid gap-8 w-full">
             <FormField
               control={form.control}
-              name="price"
+              name="title"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-foreground text-base">Price (π)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      className="cyber-panel neon-focus h-12 sm:h-14 px-4"
-                      placeholder="0.00"
-                      {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                    />
-                  </FormControl>
-                  <FormMessage className="text-sm" />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="image"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-foreground text-base">Image URL</FormLabel>
+                <FormItem className="space-y-3">
+                  <FormLabel className="text-foreground text-base font-medium">Title</FormLabel>
                   <FormControl>
                     <Input 
                       className="cyber-panel neon-focus h-12 sm:h-14 px-4"
-                      placeholder="Enter image URL"
+                      placeholder="Enter listing title"
                       {...field} 
                     />
                   </FormControl>
@@ -160,49 +103,108 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
                 </FormItem>
               )}
             />
-          </div>
-        </div>
 
-        <div className="space-y-6">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full h-12 sm:h-14 text-base neon-border"
-            onClick={() => generatePreviewQR(form.getValues())}
-          >
-            Generate QR Preview
-          </Button>
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel className="text-foreground text-base font-medium">Description</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      className="cyber-panel neon-focus min-h-[120px] p-4 text-base"
+                      placeholder="Enter listing description"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormMessage className="text-sm" />
+                </FormItem>
+              )}
+            />
 
-          {previewQR && (
-            <div className="flex justify-center p-4 sm:p-6 bg-background/50 rounded-lg cyber-panel">
-              <div className="relative w-full max-w-[280px] aspect-square">
-                <QRCodeSVG
-                  value={previewQR}
-                  size="100%"
-                  level="H"
-                  includeMargin
-                  className="w-full h-full animate-in fade-in-50"
-                />
-              </div>
+            <div className="grid sm:grid-cols-2 gap-6">
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel className="text-foreground text-base font-medium">Price (π)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        className="cyber-panel neon-focus h-12 sm:h-14 px-4"
+                        placeholder="0.00"
+                        {...field}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage className="text-sm" />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="image"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel className="text-foreground text-base font-medium">Image URL</FormLabel>
+                    <FormControl>
+                      <Input 
+                        className="cyber-panel neon-focus h-12 sm:h-14 px-4"
+                        placeholder="Enter image URL"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage className="text-sm" />
+                  </FormItem>
+                )}
+              />
             </div>
-          )}
+          </div>
 
-          <Button 
-            type="submit" 
-            className="w-full h-12 sm:h-14 text-base neon-border"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Creating Listing...
-              </>
-            ) : (
-              "Create Listing"
+          <div className="space-y-6 w-full">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-12 sm:h-14 text-base neon-border"
+              onClick={() => generatePreviewQR(form.getValues())}
+            >
+              Generate QR Preview
+            </Button>
+
+            {previewQR && (
+              <div className="flex justify-center p-6 sm:p-8 bg-background/50 rounded-lg cyber-panel">
+                <div className="relative w-full max-w-[280px] aspect-square">
+                  <QRCodeSVG
+                    value={previewQR}
+                    size="100%"
+                    level="H"
+                    includeMargin
+                    className="w-full h-full animate-in fade-in-50"
+                  />
+                </div>
+              </div>
             )}
-          </Button>
-        </div>
-      </form>
-    </Form>
+
+            <Button 
+              type="submit" 
+              className="w-full h-12 sm:h-14 text-base neon-border"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Creating Listing...
+                </>
+              ) : (
+                "Create Listing"
+              )}
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </div>
   );
 }
