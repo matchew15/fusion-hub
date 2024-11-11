@@ -8,40 +8,43 @@ export const theme = {
   },
   effects: {
     neonGlow: (color: string) => `
-      box-shadow: 0 0 1px ${color},
-                 0 0 2px ${color},
-                 0 0 3px ${color};
-      transition: all 0.2s ease-in-out;
-      margin: 0.5rem;
-      padding: 1rem;
+      box-shadow: 0 0 2px ${color},
+                 0 0 4px ${color},
+                 0 0 6px ${color};
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       &:hover {
-        box-shadow: 0 0 2px ${color},
-                   0 0 4px ${color},
-                   0 0 6px ${color};
+        box-shadow: 0 0 4px ${color},
+                   0 0 8px ${color},
+                   0 0 12px ${color};
+        transform: translateY(-2px);
+      }
+      &:active {
+        transform: translateY(0);
       }
     `,
     holographicGradient: `
       background: linear-gradient(
         45deg,
-        hsla(170, 85%, 50%, 0.05),
-        hsla(280, 85%, 50%, 0.05),
-        hsla(320, 85%, 50%, 0.05)
+        hsla(170, 85%, 50%, 0.08),
+        hsla(280, 85%, 50%, 0.08),
+        hsla(320, 85%, 50%, 0.08)
       );
-      transition: all 0.2s ease-in-out;
-      padding: 1rem;
-      margin: 0.5rem;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       &:hover {
         background: linear-gradient(
           45deg,
-          hsla(170, 85%, 50%, 0.08),
-          hsla(280, 85%, 50%, 0.08),
-          hsla(320, 85%, 50%, 0.08)
+          hsla(170, 85%, 50%, 0.12),
+          hsla(280, 85%, 50%, 0.12),
+          hsla(320, 85%, 50%, 0.12)
         );
+        transform: translateY(-2px);
+      }
+      &:active {
+        transform: translateY(0);
       }
     `,
     interactiveTransition: `
-      transition: all 0.2s ease-in-out;
-      margin: 0.5rem;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       &:hover {
         transform: translateY(-2px);
       }
@@ -53,9 +56,9 @@ export const theme = {
       background: rgba(255, 255, 255, 0.03);
       backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-      padding: 1rem;
-      margin: 0.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+                 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     `,
   },
 };
