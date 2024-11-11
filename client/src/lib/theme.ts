@@ -7,11 +7,17 @@ export const theme = {
     darkCard: 'hsl(240, 10%, 7%)',
   },
   effects: {
+    // Standardized animation durations
+    durations: {
+      fast: '150ms',
+      normal: '200ms',
+      slow: '300ms',
+    },
     neonGlow: (color: string) => `
       box-shadow: 0 0 2px ${color},
                  0 0 4px ${color},
                  0 0 6px ${color};
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
       &:hover {
         box-shadow: 0 0 4px ${color},
                    0 0 8px ${color},
@@ -21,6 +27,10 @@ export const theme = {
       &:active {
         transform: translateY(0);
       }
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
     `,
     holographicGradient: `
       background: linear-gradient(
@@ -29,7 +39,7 @@ export const theme = {
         hsla(280, 85%, 50%, 0.08),
         hsla(320, 85%, 50%, 0.08)
       );
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
       &:hover {
         background: linear-gradient(
           45deg,
@@ -42,14 +52,22 @@ export const theme = {
       &:active {
         transform: translateY(0);
       }
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
     `,
     interactiveTransition: `
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
       &:hover {
         transform: translateY(-2px);
       }
       &:active {
         transform: translateY(0);
+      }
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
     `,
     glassmorphism: `
@@ -58,7 +76,7 @@ export const theme = {
       border: 1px solid rgba(255, 255, 255, 0.1);
       box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 
                  0 2px 4px -1px rgba(0, 0, 0, 0.06);
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
     `,
   },
 };
