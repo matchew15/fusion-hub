@@ -24,6 +24,7 @@
     --input: 240 3.7% 15.9%;
     --ring: 170 100% 50%;
     --glow: 170 100% 50%;
+    --glow-color: hsl(var(--primary));
   }
 }
 
@@ -37,17 +38,36 @@
   }
 }
 
-.neon-border {
-  box-shadow: 0 0 10px theme('colors.primary.DEFAULT'),
-              0 0 20px theme('colors.primary.DEFAULT'),
-              0 0 30px theme('colors.primary.DEFAULT');
-}
+@layer components {
+  .neon-border {
+    @apply shadow-[0_0_10px_theme('colors.primary.DEFAULT'),0_0_20px_theme('colors.primary.DEFAULT'),0_0_30px_theme('colors.primary.DEFAULT')];
+  }
 
-.cyber-panel {
-  @apply bg-black/50 backdrop-blur-sm border border-primary/30 rounded-lg;
-  box-shadow: inset 0 0 20px theme('colors.primary.DEFAULT');
-}
+  .cyber-panel {
+    @apply bg-black/50 backdrop-blur-sm border border-primary/30 rounded-lg shadow-[inset_0_0_20px_theme('colors.primary.DEFAULT')];
+  }
 
-.glow-text {
-  text-shadow: 0 0 10px theme('colors.primary.DEFAULT');
+  .glow-text {
+    @apply text-shadow-glow;
+  }
+
+  .interactive-element {
+    @apply transition-all duration-[400ms] ease-in-out;
+  }
+
+  .glass-panel {
+    @apply bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.1),0_2px_4px_-1px_rgba(0,0,0,0.06)];
+  }
+
+  .neon-focus {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .hover-lift {
+    @apply transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0;
+  }
+
+  .menu-item {
+    @apply flex items-center px-4 py-2 text-sm rounded-md transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:pointer-events-none disabled:opacity-50;
+  }
 }

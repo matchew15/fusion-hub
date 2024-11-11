@@ -3,7 +3,7 @@ import type { Config } from "tailwindcss";
 export default {
     darkMode: ["class"],
     content: ["./client/index.html", "./client/src/**/*.{js,jsx,ts,tsx}"],
-  theme: {
+    theme: {
     extend: {
       borderRadius: {
         lg: 'var(--radius)',
@@ -65,6 +65,12 @@ export default {
           ring: 'hsl(var(--sidebar-ring))'
         }
       },
+      textShadow: {
+        sm: '0 1px 2px var(--tw-shadow-color)',
+        DEFAULT: '0 2px 4px var(--tw-shadow-color)',
+        lg: '0 8px 16px var(--tw-shadow-color)',
+        glow: '0 0 10px var(--glow-color)',
+      },
       keyframes: {
         'accordion-down': {
           from: { height: '0' },
@@ -90,5 +96,27 @@ export default {
       }
     }
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [
+    require("tailwindcss-animate"),
+    function({ addUtilities, theme }) {
+      const newUtilities = {
+        '.text-shadow': {
+          textShadow: theme('textShadow.DEFAULT'),
+        },
+        '.text-shadow-sm': {
+          textShadow: theme('textShadow.sm'),
+        },
+        '.text-shadow-lg': {
+          textShadow: theme('textShadow.lg'),
+        },
+        '.text-shadow-glow': {
+          textShadow: theme('textShadow.glow'),
+        },
+        '.text-shadow-none': {
+          textShadow: 'none',
+        },
+      }
+      addUtilities(newUtilities)
+    }
+  ],
 } satisfies Config;
