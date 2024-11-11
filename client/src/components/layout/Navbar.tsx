@@ -6,11 +6,13 @@ import { Loader2 } from "lucide-react";
 import { useState } from "react";
 
 export default function Navbar() {
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const { user, login, logout } = useUser();
   const { toast } = useToast();
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const handleLogin = async () => {
+    if (isAuthenticating) return;
+    
     setIsAuthenticating(true);
     try {
       const result = await login();
