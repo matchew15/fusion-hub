@@ -1,3 +1,4 @@
+import React from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/hooks/use-user";
@@ -7,7 +8,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "@/components/ui/language-selector";
 
-export default function Navbar() {
+const Navbar = React.memo(function Navbar() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const { user, login, logout } = useUser();
   const { toast } = useToast();
@@ -52,9 +53,9 @@ export default function Navbar() {
     <nav className="border-b border-primary/20 backdrop-blur-sm">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-8">
+          <div className="flex items-center space-x-4 md:space-x-8">
             <Link href="/">
-              <button className="text-2xl font-bold glow-text hover:opacity-80 transition-opacity">
+              <button className="text-xl md:text-2xl font-bold glow-text hover:opacity-80 transition-opacity">
                 Fusion Hub
               </button>
             </Link>
@@ -77,11 +78,11 @@ export default function Navbar() {
             </div>
           </div>
           
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 md:space-x-4">
             <LanguageSelector />
             {user ? (
               <>
-                <span className="text-sm text-muted-foreground">
+                <span className="hidden md:inline text-sm text-muted-foreground">
                   {t('nav.welcome', { username: user.username })}
                 </span>
                 <Button
@@ -114,4 +115,6 @@ export default function Navbar() {
       </div>
     </nav>
   );
-}
+});
+
+export default Navbar;
