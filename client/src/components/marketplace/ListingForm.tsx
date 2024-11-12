@@ -126,15 +126,18 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col">
-        {/* Header */}
-        <div className="px-4 py-3 border-b border-border/10">
+      <form 
+        onSubmit={form.handleSubmit(onSubmit)} 
+        className="flex flex-col h-full bg-background/95 backdrop-blur"
+      >
+        {/* Header - keep fixed */}
+        <div className="flex-shrink-0 px-4 py-3 border-b border-border/10 bg-background/95 backdrop-blur">
           <h2 className="text-lg font-semibold">Create Listing</h2>
         </div>
 
-        {/* Scrollable content */}
-        <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
-          <div className="space-y-4">
+        {/* Scrollable content with padding bottom for keyboard */}
+        <div className="flex-1 overflow-y-auto overscroll-none">
+          <div className="p-4 space-y-4 pb-[60vh]">
             {/* Title field */}
             <FormField
               control={form.control}
@@ -293,8 +296,8 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-border/10 space-y-3">
+        {/* Footer - keep fixed */}
+        <div className="flex-shrink-0 p-4 border-t border-border/10 bg-background/95 backdrop-blur space-y-3">
           <Button
             type="button"
             variant="outline"
