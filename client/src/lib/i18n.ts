@@ -9,17 +9,17 @@ i18n
   .use(initReactI18next)
   .init({
     fallbackLng: 'en',
-    supportedLngs: ['en', 'es'],
+    supportedLngs: ['en', 'es', 'zh', 'hi', 'ar', 'pt', 'bn', 'ru', 'ja', 'fr'],
     load: 'languageOnly',
     debug: process.env.NODE_ENV === 'development',
     interpolation: {
       escapeValue: false,
     },
+    defaultNS: 'common',
+    ns: ['common'],
     backend: {
       loadPath: '/locales/{{lng}}/{{ns}}.json',
     },
-    defaultNS: 'common',
-    ns: ['common'],
   });
 
 export default i18n;

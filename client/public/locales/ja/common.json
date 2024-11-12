@@ -1,0 +1,36 @@
+{
+  "nav": {
+    "marketplace": "マーケットプレイス",
+    "wallet": "ウォレット",
+    "chat": "チャット",
+    "login": "Piで接続",
+    "logout": "ログアウト",
+    "welcome": "ようこそ、{{username}}さん"
+  },
+  "home": {
+    "title": "Fusion Hubへようこそ",
+    "subtitle": "Pi暗号通貨でのP2P取引の未来",
+    "features": {
+      "trade": {
+        "title": "安全な取引",
+        "description": "Pi暗号通貨で安心して売買",
+        "action": "マーケットを探索"
+      },
+      "chat": {
+        "title": "リアルタイムチャット",
+        "description": "購入者と販売者に直接連絡",
+        "action": "チャットを開始"
+      },
+      "wallet": {
+        "title": "ウォレット管理",
+        "description": "Piの残高と取引を追跡",
+        "action": "ウォレットを表示"
+      }
+    },
+    "getStarted": {
+      "title": "始めましょう",
+      "description": "コミュニティに参加してPiでの取引を開始",
+      "action": "今すぐ登録"
+    }
+  }
+}

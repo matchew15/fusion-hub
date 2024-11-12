@@ -1,0 +1,36 @@
+{
+  "nav": {
+    "marketplace": "市场",
+    "wallet": "钱包",
+    "chat": "聊天",
+    "login": "用 Pi 连接",
+    "logout": "登出",
+    "welcome": "欢迎，{{username}}"
+  },
+  "home": {
+    "title": "欢迎来到 Fusion Hub",
+    "subtitle": "Pi 加密货币的 P2P 交易未来",
+    "features": {
+      "trade": {
+        "title": "安全交易",
+        "description": "使用 Pi 加密货币安全买卖",
+        "action": "浏览市场"
+      },
+      "chat": {
+        "title": "实时聊天",
+        "description": "与买家和卖家直接联系",
+        "action": "开始聊天"
+      },
+      "wallet": {
+        "title": "管理钱包",
+        "description": "跟踪您的 Pi 余额和交易",
+        "action": "查看钱包"
+      }
+    },
+    "getStarted": {
+      "title": "开始使用",
+      "description": "加入我们的社区，开始使用 Pi 交易",
+      "action": "立即注册"
+    }
+  }
+}
