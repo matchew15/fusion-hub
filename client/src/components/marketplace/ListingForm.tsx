@@ -140,8 +140,11 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="h-[calc(100vh-2rem)] flex flex-col">
-        {/* Header - keep fixed */}
+      <form 
+        onSubmit={form.handleSubmit(onSubmit)} 
+        className="flex flex-col h-full"
+      >
+        {/* Header */}
         <div className="flex-shrink-0 px-4 py-3 border-b border-border/10 bg-background/95 backdrop-blur">
           <h2 className="text-lg font-semibold">Create Listing</h2>
         </div>
@@ -326,7 +329,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
           </div>
         </div>
 
-        {/* Footer - keep fixed */}
+        {/* Footer */}
         <div className="flex-shrink-0 p-4 border-t border-border/10 bg-background/95 backdrop-blur">
           <div className="space-y-3">
             <Button
