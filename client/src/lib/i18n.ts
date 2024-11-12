@@ -15,11 +15,14 @@ i18n
     interpolation: {
       escapeValue: false,
     },
+    ns: ['common', 'translation'],
     defaultNS: 'common',
-    ns: ['common'],
     backend: {
       loadPath: '/locales/{{lng}}/{{ns}}.json',
     },
   });
+
+// Wait for translations to be loaded before rendering
+await i18n.loadNamespaces(['common', 'translation']);
 
 export default i18n;
