@@ -63,7 +63,11 @@ export default function Marketplace() {
       {listings ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredListings?.map((listing) => (
-            <ProductCard key={listing.id} listing={listing} />
+            <ProductCard 
+              key={listing.id} 
+              listing={listing} 
+              onDelete={() => mutate()}
+            />
           ))}
         </div>
       ) : (
