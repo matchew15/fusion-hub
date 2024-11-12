@@ -140,194 +140,206 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Title field with increased spacing */}
-        <FormField
-          control={form.control}
-          name="title"
-          render={({ field }) => (
-            <FormItem className="space-y-3">
-              <FormLabel className="text-lg font-bold">Title</FormLabel>
-              <FormControl>
-                <Input {...field} className="h-14 cyber-panel neon-focus" />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-
-        {/* Description with increased spacing */}
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem className="space-y-3">
-              <FormLabel className="text-lg font-bold">Description</FormLabel>
-              <FormControl>
-                <Textarea {...field} className="min-h-[120px] cyber-panel neon-focus" />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-
-        {/* Price and Type in a grid */}
-        <div className="grid gap-6">
-          <FormField
-            control={form.control}
-            name="price"
-            render={({ field }) => (
-              <FormItem className="space-y-3">
-                <FormLabel className="text-lg font-bold">Price (π)</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    {...field}
-                    className="h-14 cyber-panel neon-focus"
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="type"
-            render={({ field }) => (
-              <FormItem className="space-y-3">
-                <FormLabel className="text-lg font-bold">Type</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger className="h-14 cyber-panel neon-focus">
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="Product">Product</SelectItem>
-                    <SelectItem value="Service">Service</SelectItem>
-                  </SelectContent>
-                </Select>
-              </FormItem>
-            )}
-          />
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-[calc(100dvh-2rem)]">
+        {/* Fixed header */}
+        <div className="flex-shrink-0 px-4 py-3 border-b border-border/10 bg-background/95 backdrop-blur">
+          <h2 className="text-lg font-semibold">Create Listing</h2>
         </div>
 
-        {/* Location field */}
-        <FormField
-          control={form.control}
-          name="location"
-          render={({ field }) => (
-            <FormItem className="space-y-3">
-              <FormLabel className="text-lg font-bold">Location</FormLabel>
-              <FormControl>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                  <Input
-                    {...field}
-                    className="h-14 pl-10 pr-4 w-full cyber-panel neon-focus"
-                  />
-                </div>
-              </FormControl>
-            </FormItem>
-          )}
-        />
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          <div className="px-4 py-6 space-y-6">
+            {/* Title field */}
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel className="text-lg font-bold">Title</FormLabel>
+                  <FormControl>
+                    <Input {...field} className="h-14 cyber-panel neon-focus" />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-        {/* Image Upload */}
-        <FormField
-          control={form.control}
-          name="image"
-          render={({ field }) => (
-            <FormItem className="space-y-3">
-              <FormLabel className="text-lg font-bold">Image</FormLabel>
-              <FormControl>
-                <div className="space-y-4">
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    className="hidden"
-                    ref={fileInputRef}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleImageUpload(file);
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full h-14 cyber-panel neon-focus"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isCompressing}
-                  >
-                    {isCompressing ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Optimizing Image...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Upload Image
-                      </>
-                    )}
-                  </Button>
-                  {imagePreview && (
-                    <div className="relative w-full h-48 rounded-lg overflow-hidden cyber-panel">
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
+            {/* Description */}
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel className="text-lg font-bold">Description</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} className="min-h-[120px] cyber-panel neon-focus" />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {/* Price and Type */}
+            <div className="grid gap-6">
+              <FormField
+                control={form.control}
+                name="price"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel className="text-lg font-bold">Price (π)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        {...field}
+                        className="h-14 cyber-panel neon-focus"
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel className="text-lg font-bold">Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-14 cyber-panel neon-focus">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Product">Product</SelectItem>
+                        <SelectItem value="Service">Service</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Location */}
+            <FormField
+              control={form.control}
+              name="location"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel className="text-lg font-bold">Location</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Input
+                        {...field}
+                        className="h-14 pl-10 pr-4 w-full cyber-panel neon-focus"
+                      />
+                    </div>
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+
+            {/* Image Upload */}
+            <FormField
+              control={form.control}
+              name="image"
+              render={({ field }) => (
+                <FormItem className="space-y-3">
+                  <FormLabel className="text-lg font-bold">Image</FormLabel>
+                  <FormControl>
+                    <div className="space-y-4">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleImageUpload(file);
+                        }}
                       />
                       <Button
                         type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-2 right-2"
-                        onClick={() => {
-                          setImagePreview(null);
-                          field.onChange("");
-                          if (fileInputRef.current) {
-                            fileInputRef.current.value = "";
-                          }
-                        }}
+                        variant="outline"
+                        className="w-full h-14 cyber-panel neon-focus"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isCompressing}
                       >
-                        <X className="h-4 w-4" />
+                        {isCompressing ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Optimizing Image...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Upload Image
+                          </>
+                        )}
                       </Button>
+                      {imagePreview && (
+                        <div className="relative w-full h-48 rounded-lg overflow-hidden cyber-panel">
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-2 right-2"
+                            onClick={() => {
+                              setImagePreview(null);
+                              field.onChange("");
+                              if (fileInputRef.current) {
+                                fileInputRef.current.value = "";
+                              }
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </FormControl>
-            </FormItem>
-          )}
-        />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
 
-        {/* Buttons at the bottom */}
-        <div className="space-y-4 pt-6">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full h-14 cyber-panel neon-focus"
-            onClick={() => generatePreviewQR(form.getValues())}
-          >
-            Generate QR Preview
-          </Button>
+        {/* Fixed footer */}
+        <div className="flex-shrink-0 p-4 border-t border-border/10 bg-background/95 backdrop-blur">
+          <div className="space-y-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-14 cyber-panel neon-focus"
+              onClick={() => generatePreviewQR(form.getValues())}
+            >
+              Generate QR Preview
+            </Button>
 
-          {previewQR && (
-            <div className="py-3">
-              <div className="flex justify-center">
-                <div className="w-[140px] h-[140px] bg-white rounded-lg p-2">
-                  <QRCodeSVG
-                    value={previewQR}
-                    size={132}
-                    level="H"
-                    includeMargin={false}
-                    className="w-full h-full"
-                  />
+            {previewQR && (
+              <div className="py-3">
+                <div className="flex justify-center">
+                  <div className="w-[140px] h-[140px] bg-white rounded-lg p-2">
+                    <QRCodeSVG
+                      value={previewQR}
+                      size={132}
+                      level="H"
+                      includeMargin={false}
+                      className="w-full h-full"
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <Button type="submit" className="w-full h-14" disabled={isSubmitting}>
-            {isSubmitting ? "Creating..." : "Create Listing"}
-          </Button>
+            <Button type="submit" className="w-full h-14" disabled={isSubmitting}>
+              {isSubmitting ? "Creating..." : "Create Listing"}
+            </Button>
+          </div>
         </div>
       </form>
     </Form>
