@@ -17,7 +17,9 @@ export const listings = pgTable("listings", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-  type: text("type").notNull(), // "Product" or "Service"
+  buyPrice: decimal("buy_price", { precision: 10, scale: 2 }), // Optional buy price for requests
+  type: text("type").notNull(), // "Product", "Service", or "Request"
+  hashtags: text("hashtags").array(), // Array of hashtags
   image: text("image").notNull(),
   location: text("location"),
   active: boolean("active").default(true),
@@ -53,7 +55,9 @@ export const selectUserSchema = createSelectSchema(users);
 
 export const insertListingSchema = createInsertSchema(listings, {
   price: z.number().min(0).multipleOf(0.01),
-  type: z.enum(["Product", "Service"]),
+  buyPrice: z.number().min(0).multipleOf(0.01).optional(),
+  type: z.enum(["Product", "Service", "Request"]),
+  hashtags: z.array(z.string()).default([]),
   image: z.string().startsWith("data:image/").min(1),
   location: z.string().min(1, "Location is required"),
 });

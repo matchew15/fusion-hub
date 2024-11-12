@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +13,7 @@ import { useUser } from "@/hooks/use-user";
 import { piHelper } from "@/lib/pi-helper";
 import type { Listing } from "db/schema";
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, Tag } from "lucide-react";
 
 interface ProductCardProps {
   listing: Listing;
@@ -25,12 +26,13 @@ export default function ProductCard({ listing, onDelete }: ProductCardProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handlePurchase = async () => {
+  const handleAction = async () => {
     try {
       setIsProcessing(true);
+      const amount = listing.type === "Request" ? listing.price : Number(listing.price);
       await piHelper.createPayment({
-        amount: Number(listing.price),
-        memo: `Purchase: ${listing.title}`,
+        amount,
+        memo: `${listing.type}: ${listing.title}`,
         metadata: { listingId: listing.id },
       });
 
@@ -46,10 +48,10 @@ export default function ProductCard({ listing, onDelete }: ProductCardProps) {
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Purchase Failed",
-        description: error.message || "Failed to complete purchase"
+        title: `${listing.type === "Request" ? "Offer" : "Purchase"} Failed`,
+        description: error.message || `Failed to complete ${listing.type === "Request" ? "offer" : "purchase"}`
       });
-      console.error("Purchase failed:", error);
+      console.error("Action failed:", error);
     } finally {
       setIsProcessing(false);
     }
@@ -97,7 +99,12 @@ export default function ProductCard({ listing, onDelete }: ProductCardProps) {
       )}
       <div className="p-4 space-y-4">
         <div className="flex justify-between items-start">
-          <h3 className="text-xl font-bold">{listing.title}</h3>
+          <div className="space-y-1">
+            <h3 className="text-xl font-bold">{listing.title}</h3>
+            <Badge variant={listing.type === "Request" ? "secondary" : "default"}>
+              {listing.type}
+            </Badge>
+          </div>
           {isOwner && (
             <Dialog>
               <DialogTrigger asChild>
@@ -133,8 +140,35 @@ export default function ProductCard({ listing, onDelete }: ProductCardProps) {
           )}
         </div>
         <p className="text-muted-foreground">{listing.description}</p>
+        
+        {listing.hashtags && listing.hashtags.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {listing.hashtags.map((tag, index) => (
+              <Badge key={index} variant="outline" className="flex items-center gap-1">
+                <Tag className="h-3 w-3" />
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        )}
+
         <div className="flex justify-between items-center">
-          <p className="text-2xl font-bold text-primary">{listing.price} π</p>
+          <div className="space-y-1">
+            {listing.type === "Request" ? (
+              <>
+                <p className="text-sm text-muted-foreground">Offering</p>
+                <p className="text-2xl font-bold text-primary">{listing.price} π</p>
+                {listing.buyPrice && (
+                  <p className="text-sm text-muted-foreground">
+                    Max buy price: {listing.buyPrice} π
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-2xl font-bold text-primary">{listing.price} π</p>
+            )}
+          </div>
+          
           <Dialog>
             <DialogTrigger asChild>
               <Button
@@ -145,24 +179,29 @@ export default function ProductCard({ listing, onDelete }: ProductCardProps) {
                   ? "Processing..."
                   : isOwner
                   ? "Your Listing"
+                  : listing.type === "Request"
+                  ? "Make Offer"
                   : "Purchase"}
               </Button>
             </DialogTrigger>
             <DialogContent className="cyber-panel">
               <DialogHeader>
-                <DialogTitle>Confirm Purchase</DialogTitle>
+                <DialogTitle>
+                  {listing.type === "Request" ? "Confirm Offer" : "Confirm Purchase"}
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <p>
-                  Are you sure you want to purchase {listing.title} for{" "}
-                  {listing.price} π?
+                  {listing.type === "Request"
+                    ? `Are you sure you want to offer ${listing.price} π for ${listing.title}?`
+                    : `Are you sure you want to purchase ${listing.title} for ${listing.price} π?`}
                 </p>
                 <Button
-                  onClick={handlePurchase}
+                  onClick={handleAction}
                   className="w-full neon-border"
                   disabled={isProcessing}
                 >
-                  Confirm Purchase
+                  {listing.type === "Request" ? "Confirm Offer" : "Confirm Purchase"}
                 </Button>
               </div>
             </DialogContent>

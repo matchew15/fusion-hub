@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { QRCodeSVG } from "qrcode.react";
-import { Loader2, Upload, X, MapPin } from "lucide-react";
+import { Loader2, Upload, X, MapPin, Hash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import imageCompression from "browser-image-compression";
 import {
@@ -23,6 +23,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { useMediaQuery } from "../../hooks/use-media-query";
 
@@ -47,11 +48,15 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
       title: "",
       description: "",
       price: 0,
+      buyPrice: undefined,
       type: "Product",
       image: "",
       location: "",
+      hashtags: [],
     },
   });
+
+  const watchType = form.watch("type");
 
   // Handle virtual keyboard on mobile
   useEffect(() => {
@@ -73,6 +78,15 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
     content.addEventListener("focusin", handleFocus, true);
     return () => content.removeEventListener("focusin", handleFocus, true);
   }, [isMobile]);
+
+  const handleHashtagInput = (value: string, onChange: (...event: any[]) => void) => {
+    const hashtags = value.split(" ").map(tag => {
+      // Remove special characters and ensure it starts with #
+      tag = tag.replace(/[^\w\s]/g, "");
+      return tag.startsWith("#") ? tag : `#${tag}`;
+    });
+    onChange(hashtags);
+  };
 
   const handleImageUpload = async (file: File) => {
     if (!file) return;
@@ -110,8 +124,10 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
       title: values.title,
       description: values.description,
       price: values.price,
+      buyPrice: values.buyPrice,
       type: values.type,
       location: values.location,
+      hashtags: values.hashtags,
     };
     setPreviewQR(JSON.stringify(listingData));
   };
@@ -172,6 +188,29 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
             {/* Form Fields */}
             <FormField
               control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Type</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="cyber-panel neon-focus">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Product">Product</SelectItem>
+                      <SelectItem value="Service">Service</SelectItem>
+                      <SelectItem value="Request">Request</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="title"
               render={({ field }) => (
                 <FormItem>
@@ -203,7 +242,9 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               name="price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Price (π)</FormLabel>
+                  <FormLabel>
+                    {watchType === "Request" ? "Offer Price (π)" : "Price (π)"}
+                  </FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -219,23 +260,52 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               )}
             />
 
+            {watchType === "Request" && (
+              <FormField
+                control={form.control}
+                name="buyPrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Maximum Buy Price (π)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        step="0.01"
+                        {...field}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                        className="cyber-panel neon-focus"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      The maximum price you're willing to pay
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
             <FormField
               control={form.control}
-              name="type"
+              name="hashtags"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger className="cyber-panel neon-focus">
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Product">Product</SelectItem>
-                      <SelectItem value="Service">Service</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Hashtags</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Input
+                        value={field.value.join(" ")}
+                        onChange={(e) => handleHashtagInput(e.target.value, field.onChange)}
+                        className="pl-10 cyber-panel neon-focus"
+                        placeholder="Enter hashtags separated by spaces"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormDescription>
+                    Add relevant hashtags to help others find your listing (e.g., #electronics #gaming)
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
