@@ -22,16 +22,11 @@ import {
   FormField,
   FormItem,
   FormLabel,
-  FormMessage,
 } from "@/components/ui/form";
 
 interface ListingFormProps {
   onSuccess: () => void;
 }
-
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_IMAGE_DIMENSION = 800;
 
 export default function ListingForm({ onSuccess }: ListingFormProps) {
   const { toast } = useToast();
@@ -56,20 +51,11 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
   const handleImageUpload = async (file: File) => {
     if (!file) return;
 
-    if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) {
-      toast({
-        variant: "destructive",
-        title: "Invalid file type",
-        description: "Please upload a JPEG, PNG, or WebP image.",
-      });
-      return;
-    }
-
     try {
       setIsCompressing(true);
       const options = {
         maxSizeMB: 1,
-        maxWidthOrHeight: MAX_IMAGE_DIMENSION,
+        maxWidthOrHeight: 800,
         useWebWorker: true,
       };
       
@@ -140,24 +126,24 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-[calc(100dvh-2rem)]">
-        {/* Fixed header */}
-        <div className="flex-shrink-0 px-4 py-3 border-b border-border/10 bg-background/95 backdrop-blur">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col">
+        {/* Header */}
+        <div className="px-4 py-3 border-b border-border/10">
           <h2 className="text-lg font-semibold">Create Listing</h2>
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto overscroll-contain">
-          <div className="px-4 py-6 space-y-6">
+        <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+          <div className="space-y-4">
             {/* Title field */}
             <FormField
               control={form.control}
               name="title"
               render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel className="text-lg font-bold">Title</FormLabel>
+                <FormItem>
+                  <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input {...field} className="h-14 cyber-panel neon-focus" />
+                    <Input {...field} className="cyber-panel neon-focus" />
                   </FormControl>
                 </FormItem>
               )}
@@ -168,69 +154,68 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               control={form.control}
               name="description"
               render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel className="text-lg font-bold">Description</FormLabel>
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea {...field} className="min-h-[120px] cyber-panel neon-focus" />
+                    <Textarea {...field} className="min-h-[100px] cyber-panel neon-focus" />
                   </FormControl>
                 </FormItem>
               )}
             />
 
-            {/* Price and Type */}
-            <div className="grid gap-6">
-              <FormField
-                control={form.control}
-                name="price"
-                render={({ field }) => (
-                  <FormItem className="space-y-3">
-                    <FormLabel className="text-lg font-bold">Price (π)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        {...field}
-                        className="h-14 cyber-panel neon-focus"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+            {/* Price */}
+            <FormField
+              control={form.control}
+              name="price"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Price (π)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      {...field}
+                      className="cyber-panel neon-focus"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem className="space-y-3">
-                    <FormLabel className="text-lg font-bold">Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="h-14 cyber-panel neon-focus">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="Product">Product</SelectItem>
-                        <SelectItem value="Service">Service</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )}
-              />
-            </div>
+            {/* Type */}
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Type</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="cyber-panel neon-focus">
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="Product">Product</SelectItem>
+                      <SelectItem value="Service">Service</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormItem>
+              )}
+            />
 
             {/* Location */}
             <FormField
               control={form.control}
               name="location"
               render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel className="text-lg font-bold">Location</FormLabel>
+                <FormItem>
+                  <FormLabel>Location</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                       <Input
                         {...field}
-                        className="h-14 pl-10 pr-4 w-full cyber-panel neon-focus"
+                        className="pl-10 cyber-panel neon-focus"
                       />
                     </div>
                   </FormControl>
@@ -243,8 +228,8 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               control={form.control}
               name="image"
               render={({ field }) => (
-                <FormItem className="space-y-3">
-                  <FormLabel className="text-lg font-bold">Image</FormLabel>
+                <FormItem>
+                  <FormLabel>Image</FormLabel>
                   <FormControl>
                     <div className="space-y-4">
                       <input
@@ -260,7 +245,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
                       <Button
                         type="button"
                         variant="outline"
-                        className="w-full h-14 cyber-panel neon-focus"
+                        className="w-full cyber-panel neon-focus"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={isCompressing}
                       >
@@ -308,38 +293,26 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
           </div>
         </div>
 
-        {/* Fixed footer */}
-        <div className="flex-shrink-0 p-4 border-t border-border/10 bg-background/95 backdrop-blur">
-          <div className="space-y-4">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full h-14 cyber-panel neon-focus"
-              onClick={() => generatePreviewQR(form.getValues())}
-            >
-              Generate QR Preview
-            </Button>
-
-            {previewQR && (
-              <div className="py-3">
-                <div className="flex justify-center">
-                  <div className="w-[140px] h-[140px] bg-white rounded-lg p-2">
-                    <QRCodeSVG
-                      value={previewQR}
-                      size={132}
-                      level="H"
-                      includeMargin={false}
-                      className="w-full h-full"
-                    />
-                  </div>
-                </div>
+        {/* Footer */}
+        <div className="p-4 border-t border-border/10 space-y-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => generatePreviewQR(form.getValues())}
+            className="w-full"
+          >
+            Generate QR Preview
+          </Button>
+          {previewQR && (
+            <div className="flex justify-center py-2">
+              <div className="w-32 h-32 bg-white rounded-lg p-2">
+                <QRCodeSVG value={previewQR} size={112} level="H" />
               </div>
-            )}
-
-            <Button type="submit" className="w-full h-14" disabled={isSubmitting}>
-              {isSubmitting ? "Creating..." : "Create Listing"}
-            </Button>
-          </div>
+            </div>
+          )}
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "Creating..." : "Create Listing"}
+          </Button>
         </div>
       </form>
     </Form>
