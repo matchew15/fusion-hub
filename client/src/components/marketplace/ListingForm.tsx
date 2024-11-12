@@ -140,21 +140,24 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
 
   return (
     <Form {...form}>
-      <form 
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="h-[calc(100dvh-4rem)] flex flex-col"
-      >
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-6">
-          <div className="grid grid-cols-1 gap-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full">
+        {/* Fixed header */}
+        <div className="flex-shrink-0 px-4 py-3 border-b border-border/10 bg-background/95 backdrop-blur">
+          <h2 className="text-lg font-semibold">Create Listing</h2>
+        </div>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="px-4 py-6 space-y-6">
             <FormField
               control={form.control}
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base font-medium">Title</FormLabel>
+                  <FormLabel className="text-base font-semibold">Title</FormLabel>
                   <FormControl>
                     <Input 
-                      className="cyber-panel neon-focus h-12 px-4 w-full"
+                      className="h-12 px-4 w-full cyber-panel neon-focus"
                       placeholder="Enter listing title"
                       {...field} 
                     />
@@ -169,10 +172,10 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base font-medium">Description</FormLabel>
+                  <FormLabel className="text-base font-semibold">Description</FormLabel>
                   <FormControl>
                     <Textarea 
-                      className="cyber-panel neon-focus min-h-[120px] p-4 text-base w-full resize-y"
+                      className="min-h-[120px] p-4 text-base w-full resize-none cyber-panel neon-focus"
                       placeholder="Enter listing description"
                       {...field} 
                     />
@@ -188,14 +191,14 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
                 name="price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-base font-medium">Price (π)</FormLabel>
+                    <FormLabel className="text-base font-semibold">Price (π)</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         step="0.01"
                         min="0"
                         inputMode="decimal"
-                        className="cyber-panel neon-focus h-12 px-4 w-full"
+                        className="h-12 px-4 w-full cyber-panel neon-focus"
                         placeholder="0.00"
                         {...field}
                         onChange={(e) => {
@@ -214,10 +217,10 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
                 name="type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-base font-medium">Type</FormLabel>
+                    <FormLabel className="text-base font-semibold">Type</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
-                        <SelectTrigger className="cyber-panel neon-focus h-12">
+                        <SelectTrigger className="h-12 cyber-panel neon-focus">
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                       </FormControl>
@@ -237,12 +240,12 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               name="location"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base font-medium">Location</FormLabel>
+                  <FormLabel className="text-base font-semibold">Location</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                       <Input 
-                        className="cyber-panel neon-focus h-12 pl-10 pr-4 w-full"
+                        className="h-12 pl-10 pr-4 w-full cyber-panel neon-focus"
                         placeholder="Enter your location"
                         {...field} 
                       />
@@ -258,7 +261,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               name="image"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-base font-medium">Image</FormLabel>
+                  <FormLabel className="text-base font-semibold">Image</FormLabel>
                   <FormControl>
                     <div className="space-y-4">
                       <input
@@ -323,24 +326,25 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
           </div>
         </div>
 
-        <div className="flex-shrink-0 px-4 sm:px-6 py-4 mt-auto border-t border-border/10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="space-y-4">
+        {/* Fixed footer */}
+        <div className="flex-shrink-0 p-4 mt-auto border-t border-border/10 bg-background/95 backdrop-blur">
+          <div className="space-y-3">
             <Button
               type="button"
               variant="outline"
-              className="w-full h-12 text-base neon-border"
+              className="w-full"
               onClick={() => generatePreviewQR(form.getValues())}
             >
               Generate QR Preview
             </Button>
 
             {previewQR && (
-              <div className="py-4 bg-background/95 backdrop-blur">
+              <div className="py-3">
                 <div className="flex justify-center">
-                  <div className="w-[160px] h-[160px] bg-white rounded-lg p-2">
+                  <div className="w-[140px] h-[140px] bg-white rounded-lg p-2">
                     <QRCodeSVG
                       value={previewQR}
-                      size={152}
+                      size={132}
                       level="H"
                       includeMargin={false}
                       className="w-full h-full"
@@ -352,13 +356,13 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
 
             <Button 
               type="submit" 
-              className="w-full h-12 text-base neon-border"
+              className="w-full"
               disabled={isSubmitting || isCompressing}
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Creating Listing...
+                  Creating...
                 </>
               ) : (
                 "Create Listing"
