@@ -142,7 +142,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
     <Form {...form}>
       <form 
         onSubmit={form.handleSubmit(onSubmit)} 
-        className="flex flex-col h-full"
+        className="flex flex-col h-[calc(100vh-4rem)]"
       >
         {/* Header */}
         <div className="flex-shrink-0 px-4 py-3 border-b border-border/10 bg-background/95 backdrop-blur">
