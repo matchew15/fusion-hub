@@ -126,18 +126,15 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
 
   return (
     <Form {...form}>
-      <form 
-        onSubmit={form.handleSubmit(onSubmit)} 
-        className="flex flex-col h-full bg-background/95 backdrop-blur"
-      >
-        {/* Header - keep fixed */}
-        <div className="flex-shrink-0 px-4 py-3 border-b border-border/10 bg-background/95 backdrop-blur">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="h-screen flex flex-col">
+        {/* Header */}
+        <div className="sticky top-0 px-4 py-3 border-b border-border/10 bg-background/95 backdrop-blur z-10">
           <h2 className="text-lg font-semibold">Create Listing</h2>
         </div>
 
-        {/* Scrollable content with padding bottom for keyboard */}
-        <div className="flex-1 overflow-y-auto overscroll-none">
-          <div className="p-4 space-y-4 pb-[60vh]">
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="px-4 py-6 space-y-6">
             {/* Title field */}
             <FormField
               control={form.control}
@@ -296,8 +293,8 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
           </div>
         </div>
 
-        {/* Footer - keep fixed */}
-        <div className="flex-shrink-0 p-4 border-t border-border/10 bg-background/95 backdrop-blur space-y-3">
+        {/* Footer */}
+        <div className="sticky bottom-0 px-4 py-4 border-t border-border/10 bg-background/95 backdrop-blur space-y-3">
           <Button
             type="button"
             variant="outline"
@@ -306,6 +303,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
           >
             Generate QR Preview
           </Button>
+          
           {previewQR && (
             <div className="flex justify-center py-2">
               <div className="w-32 h-32 bg-white rounded-lg p-2">
@@ -313,6 +311,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               </div>
             </div>
           )}
+          
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Creating..." : "Create Listing"}
           </Button>
