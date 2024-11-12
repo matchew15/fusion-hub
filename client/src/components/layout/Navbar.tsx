@@ -52,7 +52,7 @@ export default function Navbar() {
           <div className="flex items-center space-x-8">
             <Link href="/">
               <button className="text-2xl font-bold glow-text hover:opacity-80 transition-opacity">
-                Pi Market
+                Fusion Hub
               </button>
             </Link>
             <div className="hidden md:flex space-x-4">

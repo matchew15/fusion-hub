@@ -10,7 +10,7 @@ export default function Home() {
     <div className="space-y-8">
       <section className="text-center space-y-4">
         <h1 className="text-5xl font-bold glow-text bg-clip-text text-transparent bg-gradient-to-r from-primary via-purple-500 to-pink-500">
-          Welcome to Pi Market
+          Welcome to Fusion Hub
         </h1>
         <p className="text-xl text-muted-foreground">
           The future of P2P trading with Pi cryptocurrency
