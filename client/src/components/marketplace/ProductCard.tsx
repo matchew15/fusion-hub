@@ -13,7 +13,7 @@ import { useUser } from "@/hooks/use-user";
 import { piHelper } from "@/lib/pi-helper";
 import type { Listing } from "db/schema";
 import { useState } from "react";
-import { Trash2, Tag } from "lucide-react";
+import { Trash2, Tag, MessageSquare } from "lucide-react";
 
 interface ProductCardProps {
   listing: Listing;
@@ -25,6 +25,28 @@ export default function ProductCard({ listing, onDelete }: ProductCardProps) {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleWhatsAppChat = () => {
+    if (!listing.whatsappNumber) {
+      toast({
+        variant: "destructive",
+        title: "Contact Error",
+        description: "WhatsApp number not available for this listing"
+      });
+      return;
+    }
+
+    // Format the message
+    const message = encodeURIComponent(
+      `Hi! I'm interested in your listing "${listing.title}" on Fusion Hub for ${listing.price} π`
+    );
+    
+    // Create WhatsApp URL
+    const whatsappUrl = `https://wa.me/${listing.whatsappNumber.replace(/\+/g, '')}?text=${message}`;
+    
+    // Open WhatsApp in a new tab
+    window.open(whatsappUrl, '_blank');
+  };
 
   const handleAction = async () => {
     try {
@@ -169,43 +191,56 @@ export default function ProductCard({ listing, onDelete }: ProductCardProps) {
             )}
           </div>
           
-          <Dialog>
-            <DialogTrigger asChild>
+          <div className="flex gap-2">
+            {!isOwner && listing.whatsappNumber && (
               <Button
-                disabled={!user || isProcessing || isOwner}
+                variant="outline"
                 className="neon-border"
+                onClick={handleWhatsAppChat}
               >
-                {isProcessing
-                  ? "Processing..."
-                  : isOwner
-                  ? "Your Listing"
-                  : listing.type === "Request"
-                  ? "Make Offer"
-                  : "Purchase"}
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Chat
               </Button>
-            </DialogTrigger>
-            <DialogContent className="cyber-panel">
-              <DialogHeader>
-                <DialogTitle>
-                  {listing.type === "Request" ? "Confirm Offer" : "Confirm Purchase"}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <p>
-                  {listing.type === "Request"
-                    ? `Are you sure you want to offer ${listing.price} π for ${listing.title}?`
-                    : `Are you sure you want to purchase ${listing.title} for ${listing.price} π?`}
-                </p>
+            )}
+
+            <Dialog>
+              <DialogTrigger asChild>
                 <Button
-                  onClick={handleAction}
-                  className="w-full neon-border"
-                  disabled={isProcessing}
+                  disabled={!user || isProcessing || isOwner}
+                  className="neon-border"
                 >
-                  {listing.type === "Request" ? "Confirm Offer" : "Confirm Purchase"}
+                  {isProcessing
+                    ? "Processing..."
+                    : isOwner
+                    ? "Your Listing"
+                    : listing.type === "Request"
+                    ? "Make Offer"
+                    : "Purchase"}
                 </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent className="cyber-panel">
+                <DialogHeader>
+                  <DialogTitle>
+                    {listing.type === "Request" ? "Confirm Offer" : "Confirm Purchase"}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p>
+                    {listing.type === "Request"
+                      ? `Are you sure you want to offer ${listing.price} π for ${listing.title}?`
+                      : `Are you sure you want to purchase ${listing.title} for ${listing.price} π?`}
+                  </p>
+                  <Button
+                    onClick={handleAction}
+                    className="w-full neon-border"
+                    disabled={isProcessing}
+                  >
+                    {listing.type === "Request" ? "Confirm Offer" : "Confirm Purchase"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
       </div>
     </Card>

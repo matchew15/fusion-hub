@@ -8,6 +8,7 @@ export const users = pgTable("users", {
   piUid: text("pi_uid").unique(), // Pi Network unique identifier
   piAccessToken: text("pi_access_token"), // Pi Network access token
   piWalletAddress: text("pi_wallet_address"),
+  whatsappNumber: text("whatsapp_number"), // Added WhatsApp number field
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -22,6 +23,7 @@ export const listings = pgTable("listings", {
   hashtags: text("hashtags").array(), // Array of hashtags
   image: text("image").notNull(),
   location: text("location"),
+  whatsappNumber: text("whatsapp_number"), // Added WhatsApp number field for direct contact
   active: boolean("active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -49,6 +51,7 @@ export const insertUserSchema = createInsertSchema(users, {
   piUid: z.string().optional(),
   piAccessToken: z.string().optional(),
   piWalletAddress: z.string().optional(),
+  whatsappNumber: z.string().optional(),
 });
 
 export const selectUserSchema = createSelectSchema(users);
@@ -60,6 +63,7 @@ export const insertListingSchema = createInsertSchema(listings, {
   hashtags: z.array(z.string()).default([]),
   image: z.string().startsWith("data:image/").min(1),
   location: z.string().min(1, "Location is required"),
+  whatsappNumber: z.string().regex(/^\+?[1-9]\d{1,14}$/, "Invalid WhatsApp number").optional(),
 });
 
 export const selectListingSchema = createSelectSchema(listings);

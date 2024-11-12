@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { QRCodeSVG } from "qrcode.react";
-import { Loader2, Upload, X, MapPin, Hash } from "lucide-react";
+import { Loader2, Upload, X, MapPin, Hash, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useUser } from "@/hooks/use-user";
 import imageCompression from "browser-image-compression";
 import {
   Select,
@@ -33,6 +34,7 @@ interface ListingFormProps {
 
 export default function ListingForm({ onSuccess }: ListingFormProps) {
   const { toast } = useToast();
+  const { user } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const [previewQR, setPreviewQR] = useState<string | null>(null);
@@ -53,6 +55,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
       image: "",
       location: "",
       hashtags: [],
+      whatsappNumber: user?.whatsappNumber || "",
     },
   });
 
@@ -323,6 +326,30 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
                       <Input {...field} className="pl-10 cyber-panel neon-focus" />
                     </div>
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="whatsappNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>WhatsApp Number</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                      <Input
+                        {...field}
+                        className="pl-10 cyber-panel neon-focus"
+                        placeholder="+1234567890"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormDescription>
+                    Your WhatsApp number for direct communication (e.g., +1234567890)
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
