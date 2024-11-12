@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertListingSchema } from "db/schema";
@@ -24,6 +24,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { useMediaQuery } from "../../hooks/use-media-query";
 
 interface ListingFormProps {
   onSuccess: () => void;
@@ -36,6 +37,9 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
   const [previewQR, setPreviewQR] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useMediaQuery("(max-width: 640px)");
+  const formRef = useRef<HTMLFormElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const form = useForm({
     resolver: zodResolver(insertListingSchema),
@@ -48,6 +52,27 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
       location: "",
     },
   });
+
+  // Handle virtual keyboard on mobile
+  useEffect(() => {
+    if (!isMobile || !contentRef.current) return;
+
+    const handleFocus = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
+        requestAnimationFrame(() => {
+          target.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+        });
+      }
+    };
+
+    const content = contentRef.current;
+    content.addEventListener("focusin", handleFocus, true);
+    return () => content.removeEventListener("focusin", handleFocus, true);
+  }, [isMobile]);
 
   const handleImageUpload = async (file: File) => {
     if (!file) return;
@@ -127,25 +152,30 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
 
   return (
     <Form {...form}>
-      <form 
-        onSubmit={form.handleSubmit(onSubmit)} 
+      <form
+        ref={formRef}
+        onSubmit={form.handleSubmit(onSubmit)}
         className="flex flex-col h-[100dvh] bg-background"
       >
-        {/* Fixed Header */}
+        {/* Header */}
         <div className="flex-shrink-0 px-4 py-3 border-b border-border/10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <h2 className="text-lg font-semibold glow-text">Create Listing</h2>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto pb-safe px-4">
+        <div
+          ref={contentRef}
+          className="flex-1 overflow-y-auto px-4 pb-safe"
+          style={{ overscrollBehavior: "contain" }}
+        >
           <div className="max-w-2xl mx-auto py-6 space-y-6">
-            {/* Title field */}
+            {/* Form Fields */}
             <FormField
               control={form.control}
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-foreground">Title</FormLabel>
+                  <FormLabel>Title</FormLabel>
                   <FormControl>
                     <Input {...field} className="cyber-panel neon-focus" />
                   </FormControl>
@@ -154,13 +184,12 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               )}
             />
 
-            {/* Description */}
             <FormField
               control={form.control}
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-foreground">Description</FormLabel>
+                  <FormLabel>Description</FormLabel>
                   <FormControl>
                     <Textarea {...field} className="min-h-[100px] cyber-panel neon-focus" />
                   </FormControl>
@@ -169,16 +198,16 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               )}
             />
 
-            {/* Price */}
             <FormField
               control={form.control}
               name="price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-foreground">Price (π)</FormLabel>
+                  <FormLabel>Price (π)</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
+                      inputMode="decimal"
                       step="0.01"
                       {...field}
                       onChange={(e) => field.onChange(parseFloat(e.target.value))}
@@ -190,13 +219,12 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               )}
             />
 
-            {/* Type */}
             <FormField
               control={form.control}
               name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-foreground">Type</FormLabel>
+                  <FormLabel>Type</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger className="cyber-panel neon-focus">
@@ -213,20 +241,16 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               )}
             />
 
-            {/* Location */}
             <FormField
               control={form.control}
               name="location"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-foreground">Location</FormLabel>
+                  <FormLabel>Location</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input
-                        {...field}
-                        className="pl-10 cyber-panel neon-focus"
-                      />
+                      <Input {...field} className="pl-10 cyber-panel neon-focus" />
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -234,13 +258,12 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               )}
             />
 
-            {/* Image Upload */}
             <FormField
               control={form.control}
               name="image"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-foreground">Image</FormLabel>
+                  <FormLabel>Image</FormLabel>
                   <FormControl>
                     <div className="space-y-4">
                       <input
@@ -305,7 +328,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
           </div>
         </div>
 
-        {/* Fixed Footer */}
+        {/* Footer */}
         <div className="flex-shrink-0 p-4 border-t border-border/10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 space-y-3">
           <Button
             type="button"
@@ -315,7 +338,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
           >
             Generate QR Preview
           </Button>
-          
+
           {previewQR && (
             <div className="flex justify-center py-2">
               <div className="w-32 h-32 bg-white rounded-lg p-2">
@@ -323,8 +346,12 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               </div>
             </div>
           )}
-          
-          <Button type="submit" className="w-full neon-focus" disabled={isSubmitting}>
+
+          <Button
+            type="submit"
+            className="w-full neon-focus"
+            disabled={isSubmitting}
+          >
             {isSubmitting ? "Creating..." : "Create Listing"}
           </Button>
         </div>

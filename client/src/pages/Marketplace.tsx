@@ -4,14 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ProductCard from "@/components/marketplace/ProductCard";
 import ListingForm from "@/components/marketplace/ListingForm";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import type { Listing } from "db/schema";
 import { useUser } from "@/hooks/use-user";
+import { useMediaQuery } from "../hooks/use-media-query";
 
 export default function Marketplace() {
   const { user } = useUser();
   const { data: listings, mutate } = useSWR<Listing[]>("/api/listings");
   const [search, setSearch] = useState("");
+  const isMobile = useMediaQuery("(max-width: 640px)");
 
   const filteredListings = listings?.filter(
     (listing) =>
@@ -24,23 +27,27 @@ export default function Marketplace() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold glow-text">Marketplace</h1>
         {user && (
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button className="neon-focus">Create Listing</Button>
-            </DialogTrigger>
-            <DialogContent 
-              className="fixed inset-0 p-0 w-full h-full max-w-none bg-background sm:p-6 sm:max-w-2xl sm:h-auto sm:rounded-lg"
-              onInteractOutside={(e) => {
-                // Prevent closing on mobile keyboard interactions
-                if ((e.target as HTMLElement).tagName === 'INPUT' || 
-                    (e.target as HTMLElement).tagName === 'TEXTAREA') {
-                  e.preventDefault();
-                }
-              }}
-            >
-              <ListingForm onSuccess={() => mutate()} />
-            </DialogContent>
-          </Dialog>
+          <>
+            {isMobile ? (
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button className="neon-focus">Create Listing</Button>
+                </SheetTrigger>
+                <SheetContent side="bottom" className="p-0 h-[100dvh] w-full">
+                  <ListingForm onSuccess={() => mutate()} />
+                </SheetContent>
+              </Sheet>
+            ) : (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="neon-focus">Create Listing</Button>
+                </DialogTrigger>
+                <DialogContent className="p-0 w-full max-w-2xl">
+                  <ListingForm onSuccess={() => mutate()} />
+                </DialogContent>
+              </Dialog>
+            )}
+          </>
         )}
       </div>
 
