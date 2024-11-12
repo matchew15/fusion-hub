@@ -1,0 +1,36 @@
+{
+  "nav": {
+    "marketplace": "Marketplace",
+    "wallet": "Wallet",
+    "chat": "Chat",
+    "login": "Connect with Pi",
+    "logout": "Logout",
+    "welcome": "Welcome, {{username}}"
+  },
+  "home": {
+    "title": "Welcome to Fusion Hub",
+    "subtitle": "The future of P2P trading with Pi cryptocurrency",
+    "features": {
+      "trade": {
+        "title": "Trade Securely",
+        "description": "Buy and sell with confidence using Pi cryptocurrency",
+        "action": "Explore Market"
+      },
+      "chat": {
+        "title": "Real-time Chat",
+        "description": "Connect directly with buyers and sellers",
+        "action": "Start Chatting"
+      },
+      "wallet": {
+        "title": "Manage Wallet",
+        "description": "Track your Pi balance and transactions",
+        "action": "View Wallet"
+      }
+    },
+    "getStarted": {
+      "title": "Get Started",
+      "description": "Join our community to start trading with Pi",
+      "action": "Register Now"
+    }
+  }
+}

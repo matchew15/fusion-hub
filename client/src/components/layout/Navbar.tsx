@@ -4,11 +4,14 @@ import { useUser } from "@/hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
+import { LanguageSelector } from "@/components/ui/language-selector";
 
 export default function Navbar() {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const { user, login, logout } = useUser();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const handleLogin = async () => {
     if (isAuthenticating) return;
@@ -58,34 +61,35 @@ export default function Navbar() {
             <div className="hidden md:flex space-x-4">
               <Link href="/marketplace">
                 <button className="hover:text-primary transition-colors">
-                  Marketplace
+                  {t('nav.marketplace')}
                 </button>
               </Link>
               <Link href="/wallet">
                 <button className="hover:text-primary transition-colors">
-                  Wallet
+                  {t('nav.wallet')}
                 </button>
               </Link>
               <Link href="/chat">
                 <button className="hover:text-primary transition-colors">
-                  Chat
+                  {t('nav.chat')}
                 </button>
               </Link>
             </div>
           </div>
           
           <div className="flex items-center space-x-4">
+            <LanguageSelector />
             {user ? (
               <>
                 <span className="text-sm text-muted-foreground">
-                  Welcome, {user.username}
+                  {t('nav.welcome', { username: user.username })}
                 </span>
                 <Button
                   variant="outline"
                   className="neon-border"
                   onClick={handleLogout}
                 >
-                  Logout
+                  {t('nav.logout')}
                 </Button>
               </>
             ) : (
@@ -101,7 +105,7 @@ export default function Navbar() {
                     Connecting...
                   </>
                 ) : (
-                  "Connect with Pi"
+                  t('nav.login')
                 )}
               </Button>
             )}
