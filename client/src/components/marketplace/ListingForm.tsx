@@ -22,6 +22,7 @@ import {
   FormField,
   FormItem,
   FormLabel,
+  FormMessage,
 } from "@/components/ui/form";
 
 interface ListingFormProps {
@@ -126,25 +127,29 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="h-screen flex flex-col">
-        {/* Header */}
-        <div className="sticky top-0 px-4 py-3 border-b border-border/10 bg-background/95 backdrop-blur z-10">
-          <h2 className="text-lg font-semibold">Create Listing</h2>
+      <form 
+        onSubmit={form.handleSubmit(onSubmit)} 
+        className="flex flex-col h-[100dvh] bg-background"
+      >
+        {/* Fixed Header */}
+        <div className="flex-shrink-0 px-4 py-3 border-b border-border/10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <h2 className="text-lg font-semibold glow-text">Create Listing</h2>
         </div>
 
-        {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="px-4 py-6 space-y-6">
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto pb-safe px-4">
+          <div className="max-w-2xl mx-auto py-6 space-y-6">
             {/* Title field */}
             <FormField
               control={form.control}
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Title</FormLabel>
+                  <FormLabel className="text-foreground">Title</FormLabel>
                   <FormControl>
                     <Input {...field} className="cyber-panel neon-focus" />
                   </FormControl>
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -155,10 +160,11 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel className="text-foreground">Description</FormLabel>
                   <FormControl>
                     <Textarea {...field} className="min-h-[100px] cyber-panel neon-focus" />
                   </FormControl>
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -169,14 +175,17 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               name="price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Price (π)</FormLabel>
+                  <FormLabel className="text-foreground">Price (π)</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
+                      step="0.01"
                       {...field}
+                      onChange={(e) => field.onChange(parseFloat(e.target.value))}
                       className="cyber-panel neon-focus"
                     />
                   </FormControl>
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -187,7 +196,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Type</FormLabel>
+                  <FormLabel className="text-foreground">Type</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger className="cyber-panel neon-focus">
@@ -199,6 +208,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
                       <SelectItem value="Service">Service</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -209,7 +219,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               name="location"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Location</FormLabel>
+                  <FormLabel className="text-foreground">Location</FormLabel>
                   <FormControl>
                     <div className="relative">
                       <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
@@ -219,6 +229,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
                       />
                     </div>
                   </FormControl>
+                  <FormMessage />
                 </FormItem>
               )}
             />
@@ -229,7 +240,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
               name="image"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Image</FormLabel>
+                  <FormLabel className="text-foreground">Image</FormLabel>
                   <FormControl>
                     <div className="space-y-4">
                       <input
@@ -287,19 +298,20 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
                       )}
                     </div>
                   </FormControl>
+                  <FormMessage />
                 </FormItem>
               )}
             />
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="sticky bottom-0 px-4 py-4 border-t border-border/10 bg-background/95 backdrop-blur space-y-3">
+        {/* Fixed Footer */}
+        <div className="flex-shrink-0 p-4 border-t border-border/10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 space-y-3">
           <Button
             type="button"
             variant="outline"
             onClick={() => generatePreviewQR(form.getValues())}
-            className="w-full"
+            className="w-full neon-focus"
           >
             Generate QR Preview
           </Button>
@@ -312,7 +324,7 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
             </div>
           )}
           
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
+          <Button type="submit" className="w-full neon-focus" disabled={isSubmitting}>
             {isSubmitting ? "Creating..." : "Create Listing"}
           </Button>
         </div>

@@ -26,9 +26,18 @@ export default function Marketplace() {
         {user && (
           <Dialog>
             <DialogTrigger asChild>
-              <Button className="neon-border">Create Listing</Button>
+              <Button className="neon-focus">Create Listing</Button>
             </DialogTrigger>
-            <DialogContent className="fixed inset-0 max-w-3xl mx-auto bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 cyber-panel p-0">
+            <DialogContent 
+              className="fixed inset-0 p-0 w-full h-full max-w-none bg-background sm:p-6 sm:max-w-2xl sm:h-auto sm:rounded-lg"
+              onInteractOutside={(e) => {
+                // Prevent closing on mobile keyboard interactions
+                if ((e.target as HTMLElement).tagName === 'INPUT' || 
+                    (e.target as HTMLElement).tagName === 'TEXTAREA') {
+                  e.preventDefault();
+                }
+              }}
+            >
               <ListingForm onSuccess={() => mutate()} />
             </DialogContent>
           </Dialog>
