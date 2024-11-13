@@ -7,9 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import type { Listing } from "db/schema";
 import 'leaflet/dist/leaflet.css';
 
-// Get API key from environment
-const MAPBOX_API_KEY = import.meta.env.VITE_MAPBOX_API_KEY;
-
 // Define icon URLs using CDN
 const MARKER_ICON_URL = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png';
 const MARKER_SHADOW_URL = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png';
@@ -34,6 +31,7 @@ interface GeocodedListing extends Listing {
 }
 
 export default function MapView({ listings, onListingClick }: MapViewProps) {
+  // All hooks at the top
   const [geocodedListings, setGeocodedListings] = useState<GeocodedListing[]>([]);
   const [mapCenter, setMapCenter] = useState<[number, number]>([20, 0]);
   const [mapZoom, setMapZoom] = useState(2);
@@ -43,24 +41,11 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [map, setMap] = useState<Map | null>(null);
   const mapRef = useRef<Map | null>(null);
 
-  if (!MAPBOX_API_KEY) {
-    return (
-      <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
-        <div className="text-destructive space-y-2 text-center p-4">
-          <p className="font-bold">Map Service Configuration Error</p>
-          <p className="text-sm text-muted-foreground">
-            Please ensure the Mapbox API key is properly configured.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   const geocodeLocation = async (location: string) => {
-    if (!location || !MAPBOX_API_KEY) return null;
+    if (!location || !import.meta.env.VITE_MAPBOX_API_KEY) return null;
 
     try {
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(location)}.json?access_token=${MAPBOX_API_KEY}&limit=1`;
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(location)}.json?access_token=${import.meta.env.VITE_MAPBOX_API_KEY}&limit=1`;
       const response = await fetch(url);
       const data = await response.json();
 
@@ -80,6 +65,13 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   };
 
   useEffect(() => {
+    // Check for API key first
+    if (!import.meta.env.VITE_MAPBOX_API_KEY) {
+      setError('Map Service Configuration Error');
+      setIsLoading(false);
+      return;
+    }
+
     const geocodeListings = async () => {
       if (!listings.length) {
         setIsLoading(false);
@@ -124,13 +116,23 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     geocodeListings();
   }, [listings, map]);
 
+  const handleLocationSelect = useCallback(async (location: string) => {
+    setSearchQuery(location);
+    const coordinates = await geocodeLocation(location);
+    if (coordinates && map) {
+      setMapCenter(coordinates);
+      setMapZoom(13);
+      map.setView(coordinates, 13);
+    }
+  }, [map]);
+
   const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (value: string) => void }) => {
     const [suggestions, setSuggestions] = useState<Array<{ place_name: string; center: [number, number] }>>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isSearching, setIsSearching] = useState(false);
 
     const handleSearch = async (query: string) => {
-      if (!query || !MAPBOX_API_KEY) {
+      if (!query || !import.meta.env.VITE_MAPBOX_API_KEY) {
         setSuggestions([]);
         return;
       }
@@ -138,7 +140,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
       setIsSearching(true);
       try {
         const response = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_API_KEY}&limit=5`
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${import.meta.env.VITE_MAPBOX_API_KEY}&limit=5`
         );
         const data = await response.json();
 
@@ -208,12 +210,12 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) => void }) => {
     useMapEvents({
       click: async (e) => {
-        if (!MAPBOX_API_KEY) return;
+        if (!import.meta.env.VITE_MAPBOX_API_KEY) return;
         
         const { lat, lng } = e.latlng;
         try {
           const response = await fetch(
-            `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_API_KEY}&limit=1`
+            `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${import.meta.env.VITE_MAPBOX_API_KEY}&limit=1`
           );
           const data = await response.json();
           
@@ -228,27 +230,19 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     return null;
   };
 
-  const handleLocationSelect = useCallback(async (location: string) => {
-    setSearchQuery(location);
-    const coordinates = await geocodeLocation(location);
-    if (coordinates && map) {
-      setMapCenter(coordinates);
-      setMapZoom(13);
-      map.setView(coordinates, 13);
-    }
-  }, [map]);
-
+  // Loading state
   if (isLoading) {
     return (
-      <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center bg-background">
+      <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
         <div className="flex flex-col items-center space-y-2">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p>Loading map data...</p>
+          <p>Loading map...</p>
         </div>
       </div>
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
@@ -266,28 +260,26 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
 
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel">
         <MapContainer
-          key={`map-${mapCenter[0]}-${mapCenter[1]}-${mapZoom}`}
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
           whenReady={(map) => {
-            console.log('Map initialized');
             setMap(map.target);
             mapRef.current = map.target;
           }}
         >
           <TileLayer
             attribution='© <a href="https://www.mapbox.com/about/maps/">Mapbox</a>'
-            url={`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${MAPBOX_API_KEY}`}
+            url={`https://api.mapbox.com/styles/v1/mapbox/dark-v10/tiles/{z}/{x}/{y}?access_token=${import.meta.env.VITE_MAPBOX_API_KEY}`}
+            tileSize={512}
+            zoomOffset={-1}
           />
           <MapEvents onLocationSelect={handleLocationSelect} />
           {geocodedListings.map((listing) => {
             if (!listing.coordinates) {
-              console.log('Skipping marker for listing without coordinates:', listing.id);
               return null;
             }
 
-            console.log('Rendering marker for listing:', listing.id, listing.coordinates);
             return (
               <Marker
                 key={listing.id}
