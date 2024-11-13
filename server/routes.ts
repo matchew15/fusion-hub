@@ -2,7 +2,7 @@ import { Express } from "express";
 import { setupAuth } from "./auth";
 import { db } from "../db";
 import { listings, transactions, chats, users } from "../db/schema";
-import { eq, and, or, ilike, inArray } from "drizzle-orm";
+import { eq, and, or, ilike, sql } from "drizzle-orm";
 
 export function registerRoutes(app: Express) {
   setupAuth(app);
@@ -46,13 +46,17 @@ export function registerRoutes(app: Express) {
       }
 
       if (hashtags) {
-        // Handle array of hashtags
-        const hashtagArray = Array.isArray(hashtags) 
-          ? hashtags 
-          : (hashtags as string).split(',');
-        conditions.push(
-          inArray(listings.hashtags, hashtagArray as string[])
-        );
+        const hashtagArray = typeof hashtags === 'string' 
+          ? hashtags.split(',').filter(Boolean)
+          : Array.isArray(hashtags) 
+            ? hashtags.filter(Boolean)
+            : [];
+            
+        if (hashtagArray.length > 0) {
+          conditions.push(
+            sql`${listings.hashtags} && ${sql.array(hashtagArray)}`
+          );
+        }
       }
 
       if (conditions.length > 0) {
