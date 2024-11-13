@@ -9,7 +9,6 @@ import 'leaflet/dist/leaflet.css';
 
 // Get API key from environment
 const OPENCAGE_API_KEY = import.meta.env.VITE_OPENCAGE_API_KEY;
-console.log('OpenCage API Key Status:', OPENCAGE_API_KEY ? 'Available' : 'Missing');
 
 // Define icon URLs using CDN
 const MARKER_ICON_URL = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png';
@@ -43,16 +42,25 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const mapRef = useRef<Map | null>(null);
 
+  if (!OPENCAGE_API_KEY) {
+    return (
+      <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
+        <div className="text-destructive space-y-2 text-center p-4">
+          <p className="font-bold">Map Service Configuration Error</p>
+          <p className="text-sm text-muted-foreground">
+            Please ensure the OpenCage API key is properly configured.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const geocodeLocation = async (location: string) => {
-    const apiKey = OPENCAGE_API_KEY;
-    if (!location || !apiKey) {
-      console.log('Geocoding skipped:', !location ? 'No location provided' : 'No API key available');
-      return null;
-    }
+    if (!location) return null;
 
     try {
       const response = await fetch(
-        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${apiKey}&limit=1`
+        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${OPENCAGE_API_KEY}&limit=1`
       );
       
       if (!response.ok) {
@@ -79,8 +87,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
         return;
       }
 
-      const apiKey = OPENCAGE_API_KEY;
-      if (!apiKey) {
+      if (!OPENCAGE_API_KEY) {
         console.error('OpenCage API key not found in environment');
         setError('Map Service Configuration Error');
         setIsLoading(false);
@@ -127,8 +134,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     const [isSearching, setIsSearching] = useState(false);
 
     const handleSearch = async (query: string) => {
-      const apiKey = OPENCAGE_API_KEY;
-      if (!query || !apiKey) {
+      if (!query) {
         setSuggestions([]);
         return;
       }
@@ -136,7 +142,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
       setIsSearching(true);
       try {
         const response = await fetch(
-          `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${apiKey}&limit=5`
+          `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${OPENCAGE_API_KEY}&limit=5`
         );
         const data = await response.json();
 
@@ -203,13 +209,10 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) => void }) => {
     const map = useMapEvents({
       click: async (e) => {
-        const apiKey = OPENCAGE_API_KEY;
-        if (!apiKey) return;
-        
         const { lat, lng } = e.latlng;
         try {
           const response = await fetch(
-            `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${apiKey}&limit=1`
+            `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${OPENCAGE_API_KEY}&limit=1`
           );
           const data = await response.json();
           
@@ -233,19 +236,6 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
       mapRef.current.setView(coordinates, 13);
     }
   }, []);
-
-  if (!OPENCAGE_API_KEY) {
-    return (
-      <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
-        <div className="text-destructive space-y-2 text-center p-4">
-          <p className="font-bold">Map Service Configuration Error</p>
-          <p className="text-sm text-muted-foreground">
-            Unable to initialize map service. Please check configuration.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
