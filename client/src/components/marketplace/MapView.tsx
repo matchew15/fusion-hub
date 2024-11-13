@@ -2,21 +2,26 @@
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
-import { Icon } from 'leaflet';
+import { Icon, Map } from 'leaflet';
 import type { Listing } from 'db/schema';
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-// Define the icon once at the component level
+// Define icon URLs
+const MARKER_ICON_URL = '/marker-icon.png';
+const MARKER_SHADOW_URL = '/marker-shadow.png';
+
+// Create icon instance
 const defaultIcon = new Icon({
-  iconUrl: '/node_modules/leaflet/dist/images/marker-icon.png',
-  shadowUrl: '/node_modules/leaflet/dist/images/marker-shadow.png',
+  iconUrl: MARKER_ICON_URL,
+  shadowUrl: MARKER_SHADOW_URL,
   iconSize: [25, 41],
   iconAnchor: [12, 41]
 });
 
-const OPENCAGE_API_KEY = import.meta.env.VITE_OPENCAGE_API_KEY;
+// Get API key from environment
+const API_KEY = import.meta.env.VITE_OPENCAGE_API_KEY;
 
 interface MapViewProps {
   listings: Listing[];
@@ -28,16 +33,16 @@ interface GeocodedListing extends Listing {
 }
 
 const geocodeLocation = async (location: string) => {
-  const apiKey = import.meta.env.VITE_OPENCAGE_API_KEY;
-  if (!location || !apiKey) {
-    console.log('Geocoding skipped:', !location ? 'No location provided' : 'No API key available');
+  if (!location) return null;
+  
+  if (!API_KEY) {
+    console.error('OpenCage API key not found');
     return null;
   }
-  
+
   try {
-    console.log('Geocoding location:', location);
     const response = await fetch(
-      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${apiKey}&limit=1`
+      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${API_KEY}&limit=1`
     );
     
     if (!response.ok) {
@@ -45,16 +50,12 @@ const geocodeLocation = async (location: string) => {
     }
 
     const data = await response.json();
-    console.log('Geocoding response status:', data.status?.message || 'OK');
     
     if (data.results && data.results.length > 0) {
       const { lat, lng } = data.results[0].geometry;
-      const coords = [Number(lat), Number(lng)] as [number, number];
-      console.log('Coordinates found:', coords);
-      return coords;
+      return [Number(lat), Number(lng)] as [number, number];
     }
     
-    console.log('No coordinates found for location:', location);
     return null;
   } catch (error) {
     console.error('Geocoding error:', error);
@@ -67,15 +68,14 @@ const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (va
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const handleSearch = async (query: string) => {
-    const apiKey = import.meta.env.VITE_OPENCAGE_API_KEY;
-    if (!query || !apiKey) {
+    if (!query || !API_KEY) {
       setSuggestions([]);
       return;
     }
 
     try {
       const response = await fetch(
-        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${apiKey}&limit=5`
+        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${API_KEY}&limit=5`
       );
       const data = await response.json();
 
@@ -135,13 +135,12 @@ const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (va
 const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) => void }) => {
   const map = useMapEvents({
     click: async (e) => {
-      const apiKey = import.meta.env.VITE_OPENCAGE_API_KEY;
-      if (!apiKey) return;
+      if (!API_KEY) return;
       
       const { lat, lng } = e.latlng;
       try {
         const response = await fetch(
-          `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${apiKey}&limit=1`
+          `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${API_KEY}&limit=1`
         );
         const data = await response.json();
         
@@ -161,16 +160,17 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [mapCenter, setMapCenter] = useState<[number, number]>([20, 0]);
   const [mapZoom, setMapZoom] = useState(2);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const mapRef = useRef<L.Map>(null);
+  const mapRef = useRef<Map | null>(null);
 
-  if (!import.meta.env.VITE_OPENCAGE_API_KEY) {
-    console.error('OpenCage API key is missing');
+  // Check for API key early
+  if (!API_KEY) {
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
         <div className="text-destructive space-y-2">
-          <p>Error: Geocoding service is currently unavailable</p>
-          <p className="text-sm text-muted-foreground">Please try again later</p>
+          <p>Error: Geocoding service configuration is missing</p>
+          <p className="text-sm text-muted-foreground">Please check the environment configuration</p>
         </div>
       </div>
     );
@@ -190,6 +190,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
       if (!listings.length) return;
       
       setIsLoading(true);
+      setError(null);
       
       try {
         const geocoded = await Promise.all(
@@ -213,6 +214,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
         }
       } catch (error) {
         console.error('Failed to geocode listings:', error);
+        setError('Failed to load location data');
       } finally {
         setIsLoading(false);
       }
@@ -232,6 +234,17 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     );
   }
 
+  if (error) {
+    return (
+      <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
+        <div className="text-destructive space-y-2">
+          <p>Error: {error}</p>
+          <p className="text-sm text-muted-foreground">Please try again later</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <LocationSearchInput value={searchQuery} onChange={handleLocationSelect} />
@@ -242,8 +255,8 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
-          whenReady={(map) => {
-            mapRef.current = map.target;
+          whenCreated={(map) => {
+            mapRef.current = map;
           }}
         >
           <TileLayer
