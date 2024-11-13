@@ -1,12 +1,12 @@
 /// <reference types="vite/client" />
-import 'leaflet/dist/leaflet.css';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
-import { Icon, Map } from 'leaflet';
-import type { Listing } from 'db/schema';
-import { Badge } from "@/components/ui/badge";
-import { Loader2, Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Icon } from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Get API key from environment properly
+const OPENCAGE_API_KEY = import.meta.env.VITE_OPENCAGE_API_KEY;
+console.log('OpenCage API Key Status:', OPENCAGE_API_KEY ? 'Available' : 'Missing');
 
 // Define icon URLs
 const MARKER_ICON_URL = '/marker-icon.png';
@@ -20,9 +20,6 @@ const defaultIcon = new Icon({
   iconAnchor: [12, 41]
 });
 
-// Get API key from environment
-const API_KEY = import.meta.env.VITE_OPENCAGE_API_KEY;
-
 interface MapViewProps {
   listings: Listing[];
   onListingClick?: (listing: Listing) => void;
@@ -33,16 +30,20 @@ interface GeocodedListing extends Listing {
 }
 
 const geocodeLocation = async (location: string) => {
-  if (!location) return null;
+  if (!location) {
+    console.log('Geocoding skipped: No location provided');
+    return null;
+  }
   
-  if (!API_KEY) {
-    console.error('OpenCage API key not found');
+  if (!OPENCAGE_API_KEY) {
+    console.error('Geocoding failed: API key not found');
     return null;
   }
 
   try {
+    console.log('Geocoding location:', location);
     const response = await fetch(
-      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${API_KEY}&limit=1`
+      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${OPENCAGE_API_KEY}&limit=1`
     );
     
     if (!response.ok) {
@@ -50,12 +51,16 @@ const geocodeLocation = async (location: string) => {
     }
 
     const data = await response.json();
+    console.log('Geocoding response:', data.status?.message || 'Success');
     
     if (data.results && data.results.length > 0) {
       const { lat, lng } = data.results[0].geometry;
-      return [Number(lat), Number(lng)] as [number, number];
+      const coords = [Number(lat), Number(lng)] as [number, number];
+      console.log('Coordinates found:', coords);
+      return coords;
     }
     
+    console.log('No coordinates found for location:', location);
     return null;
   } catch (error) {
     console.error('Geocoding error:', error);
@@ -68,14 +73,14 @@ const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (va
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const handleSearch = async (query: string) => {
-    if (!query || !API_KEY) {
+    if (!query || !OPENCAGE_API_KEY) {
       setSuggestions([]);
       return;
     }
 
     try {
       const response = await fetch(
-        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${API_KEY}&limit=5`
+        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${OPENCAGE_API_KEY}&limit=5`
       );
       const data = await response.json();
 
@@ -135,12 +140,12 @@ const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (va
 const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) => void }) => {
   const map = useMapEvents({
     click: async (e) => {
-      if (!API_KEY) return;
+      if (!OPENCAGE_API_KEY) return;
       
       const { lat, lng } = e.latlng;
       try {
         const response = await fetch(
-          `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${API_KEY}&limit=1`
+          `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${OPENCAGE_API_KEY}&limit=1`
         );
         const data = await response.json();
         
@@ -164,28 +169,14 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const mapRef = useRef<Map | null>(null);
 
-  // Check for API key early
-  if (!API_KEY) {
-    return (
-      <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
-        <div className="text-destructive space-y-2">
-          <p>Error: Geocoding service configuration is missing</p>
-          <p className="text-sm text-muted-foreground">Please check the environment configuration</p>
-        </div>
-      </div>
-    );
-  }
-
-  const handleLocationSelect = useCallback(async (location: string) => {
-    setSearchQuery(location);
-    const coordinates = await geocodeLocation(location);
-    if (coordinates) {
-      setMapCenter(coordinates);
-      setMapZoom(13);
-    }
-  }, []);
-
   useEffect(() => {
+    // Check API key on component mount
+    if (!OPENCAGE_API_KEY) {
+      console.error('OpenCage API key not found in environment');
+      setError('Geocoding service configuration is missing');
+      return;
+    }
+
     const geocodeListings = async () => {
       if (!listings.length) return;
       
@@ -223,6 +214,15 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     geocodeListings();
   }, [listings]);
 
+  const handleLocationSelect = useCallback(async (location: string) => {
+    setSearchQuery(location);
+    const coordinates = await geocodeLocation(location);
+    if (coordinates) {
+      setMapCenter(coordinates);
+      setMapZoom(13);
+    }
+  }, []);
+
   if (isLoading) {
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
@@ -237,9 +237,11 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   if (error) {
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
-        <div className="text-destructive space-y-2">
-          <p>Error: {error}</p>
-          <p className="text-sm text-muted-foreground">Please try again later</p>
+        <div className="text-destructive space-y-2 text-center">
+          <p className="font-bold">Error: {error}</p>
+          <p className="text-sm text-muted-foreground">
+            Please ensure the OpenCage API key is properly configured in the environment.
+          </p>
         </div>
       </div>
     );
@@ -251,7 +253,6 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
 
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel">
         <MapContainer
-          key={`${mapCenter[0]}-${mapCenter[1]}-${mapZoom}`}
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
