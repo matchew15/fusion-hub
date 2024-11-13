@@ -8,9 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import type { Listing } from "db/schema";
 import 'leaflet/dist/leaflet.css';
 
-// Get API key from environment properly
-const OPENCAGE_API_KEY = import.meta.env.VITE_OPENCAGE_API_KEY;
-console.log('OpenCage API Key Status:', OPENCAGE_API_KEY ? 'Available' : 'Missing');
+// Get API key from environment
+const OPENCAGE_API_KEY = import.meta.env.VITE_OPENCAGE_API_KEY || process.env.OPENCAGE_API_KEY;
+
+// Add debug logging (but never print the actual key)
+useEffect(() => {
+  if (!OPENCAGE_API_KEY) {
+    console.error('OpenCage API key not found. Please check environment configuration.');
+  }
+}, []);
 
 // Define icon URLs using CDN
 const MARKER_ICON_URL = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png';
@@ -176,15 +182,17 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const mapRef = useRef<Map | null>(null);
 
   useEffect(() => {
-    // Check API key on component mount
     if (!OPENCAGE_API_KEY) {
-      console.error('OpenCage API key not found in environment');
-      setError('Geocoding service configuration is missing');
+      setError('Missing API key - Please check environment configuration');
+      setIsLoading(false);
       return;
     }
 
     const geocodeListings = async () => {
-      if (!listings.length) return;
+      if (!listings.length) {
+        setIsLoading(false);
+        return;
+      }
       
       setIsLoading(true);
       setError(null);
@@ -243,10 +251,10 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   if (error) {
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
-        <div className="text-destructive space-y-2 text-center">
+        <div className="text-destructive space-y-2 text-center p-4">
           <p className="font-bold">Error: {error}</p>
           <p className="text-sm text-muted-foreground">
-            Please ensure the OpenCage API key is properly configured in the environment.
+            The map functionality is currently unavailable. Please try again later.
           </p>
         </div>
       </div>
