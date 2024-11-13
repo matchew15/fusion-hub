@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -7,13 +7,22 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-// Fix for default marker icons
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+// Fix for marker icons
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+
+const defaultIcon = L.icon({
+  iconUrl: markerIcon.src,
+  iconRetinaUrl: markerIcon2x.src,
+  shadowUrl: markerShadow.src,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
 });
+
+L.Marker.prototype.options.icon = defaultIcon;
 
 interface MapViewProps {
   listings: Listing[];
@@ -36,7 +45,7 @@ const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (va
 
     try {
       const response = await fetch(
-        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${process.env.NEXT_PUBLIC_OPENCAGE_API_KEY}&limit=5&no_annotations=1`
+        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${process.env.NEXT_PUBLIC_OPENCAGE_API_KEY}&limit=5`
       );
       const data = await response.json();
 
@@ -97,9 +106,8 @@ const geocodeLocation = async (location: string) => {
   if (!location) return null;
   
   try {
-    console.log('Geocoding location:', location);
     const response = await fetch(
-      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${process.env.NEXT_PUBLIC_OPENCAGE_API_KEY}&limit=1&no_annotations=1`
+      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${process.env.NEXT_PUBLIC_OPENCAGE_API_KEY}&limit=1`
     );
     
     if (!response.ok) {
@@ -107,7 +115,6 @@ const geocodeLocation = async (location: string) => {
     }
 
     const data = await response.json();
-    console.log('Geocoding response:', data);
     
     if (data.results && data.results.length > 0) {
       const { lat, lng } = data.results[0].geometry;
@@ -127,7 +134,7 @@ const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) 
       const { lat, lng } = e.latlng;
       try {
         const response = await fetch(
-          `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${process.env.NEXT_PUBLIC_OPENCAGE_API_KEY}&limit=1&no_annotations=1`
+          `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${process.env.NEXT_PUBLIC_OPENCAGE_API_KEY}&limit=1`
         );
         const data = await response.json();
         
@@ -144,10 +151,12 @@ const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) 
 
 export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [geocodedListings, setGeocodedListings] = useState<GeocodedListing[]>([]);
-  const [mapCenter, setMapCenter] = useState<[number, number]>([20, 0]);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([0, 0]);
   const [mapZoom, setMapZoom] = useState(2);
+  const [mapKey, setMapKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const mapRef = useRef<L.Map>(null);
 
   const handleLocationSelect = useCallback(async (location: string) => {
     setSearchQuery(location);
@@ -159,25 +168,24 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   }, []);
 
   useEffect(() => {
+    if (mapRef.current && mapCenter) {
+      mapRef.current.setView(mapCenter, mapZoom);
+    }
+  }, [mapCenter, mapZoom]);
+
+  useEffect(() => {
     const geocodeListings = async () => {
       if (!listings.length) return;
       
       setIsLoading(true);
-      console.log('Starting geocoding for', listings.length, 'listings');
       
       try {
         const geocoded = await Promise.all(
           listings.map(async (listing) => {
-            if (!listing.location) {
-              console.log('Skipping listing without location:', listing.id);
-              return { ...listing };
-            }
+            if (!listing.location) return { ...listing };
             
-            console.log('Geocoding listing:', listing.id, listing.location);
             const coordinates = await geocodeLocation(listing.location);
-            
             if (!coordinates) {
-              console.warn(`No coordinates found for listing ${listing.id}`);
               return { ...listing };
             }
             
@@ -185,14 +193,16 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           })
         );
 
-        const validListings = geocoded.filter(listing => !!listing.coordinates);
-        console.log('Successfully geocoded', validListings.length, 'of', listings.length, 'listings');
+        const validListings = geocoded.filter((listing): listing is GeocodedListing & { coordinates: [number, number] } => 
+          !!listing.coordinates
+        );
         setGeocodedListings(geocoded);
         
         if (validListings.length > 0) {
           const firstValid = validListings[0];
-          setMapCenter(firstValid.coordinates!);
+          setMapCenter(firstValid.coordinates);
           setMapZoom(13);
+          setMapKey(prev => prev + 1);
         }
       } catch (error) {
         console.error('Failed to geocode listings:', error);
@@ -221,10 +231,13 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
 
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel">
         <MapContainer
-          key={`${mapCenter[0]}-${mapCenter[1]}-${mapZoom}`}
+          key={mapKey}
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
+          whenCreated={(map) => {
+            mapRef.current = map;
+          }}
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -232,16 +245,13 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           />
           <MapEvents onLocationSelect={handleLocationSelect} />
           {geocodedListings.map((listing) => {
-            if (!listing.coordinates) {
-              console.log('Skipping marker for listing without coordinates:', listing.id);
-              return null;
-            }
+            if (!listing.coordinates) return null;
             
-            console.log('Adding marker for listing:', listing.id, listing.coordinates);
             return (
               <Marker
                 key={listing.id}
                 position={listing.coordinates}
+                icon={defaultIcon}
                 eventHandlers={{
                   click: () => onListingClick?.(listing),
                 }}
