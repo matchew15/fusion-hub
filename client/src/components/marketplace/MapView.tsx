@@ -31,10 +31,6 @@ interface GeocodedListing extends Listing {
 }
 
 export default function MapView({ listings, onListingClick }: MapViewProps) {
-  // Get API key from environment
-  const apiKey = import.meta.env.VITE_OPENCAGE_API_KEY;
-  console.log('API Key status:', apiKey ? 'Available' : 'Missing'); // Only log status, never the key itself
-
   const [geocodedListings, setGeocodedListings] = useState<GeocodedListing[]>([]);
   const [mapCenter, setMapCenter] = useState<[number, number]>([20, 0]);
   const [mapZoom, setMapZoom] = useState(2);
@@ -42,19 +38,6 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const mapRef = useRef<Map | null>(null);
-
-  if (!apiKey) {
-    return (
-      <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
-        <div className="text-destructive space-y-2 text-center p-4">
-          <p className="font-bold">Map Service Configuration Error</p>
-          <p className="text-sm text-muted-foreground">
-            Unable to initialize map service. Please check configuration.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   const geocodeLocation = async (location: string) => {
     if (!location) {
@@ -64,7 +47,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
 
     try {
       const response = await fetch(
-        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${apiKey}&limit=1`
+        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${import.meta.env.VITE_OPENCAGE_API_KEY}&limit=1`
       );
       
       if (!response.ok) {
@@ -87,6 +70,12 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   useEffect(() => {
     const geocodeListings = async () => {
       if (!listings.length) {
+        setIsLoading(false);
+        return;
+      }
+
+      if (!import.meta.env.VITE_OPENCAGE_API_KEY) {
+        setError('Map service configuration error');
         setIsLoading(false);
         return;
       }
@@ -128,16 +117,18 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (value: string) => void }) => {
     const [suggestions, setSuggestions] = useState<Array<{ place_name: string; center: [number, number] }>>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [isSearching, setIsSearching] = useState(false);
 
     const handleSearch = async (query: string) => {
-      if (!query) {
+      if (!query || !import.meta.env.VITE_OPENCAGE_API_KEY) {
         setSuggestions([]);
         return;
       }
 
+      setIsSearching(true);
       try {
         const response = await fetch(
-          `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${apiKey}&limit=5`
+          `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${import.meta.env.VITE_OPENCAGE_API_KEY}&limit=5`
         );
         const data = await response.json();
 
@@ -152,6 +143,8 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
         }
       } catch (error) {
         console.error('Location search failed:', error);
+      } finally {
+        setIsSearching(false);
       }
     };
 
@@ -166,7 +159,11 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     return (
       <div className="relative">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          {isSearching ? (
+            <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
+          ) : (
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          )}
           <Input
             value={value}
             onChange={(e) => onChange(e.target.value)}
@@ -185,6 +182,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
                   setShowSuggestions(false);
                 }}
               >
+                <MapPin className="inline-block w-4 h-4 mr-2 text-muted-foreground" />
                 {suggestion.place_name}
               </button>
             ))}
@@ -197,10 +195,12 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) => void }) => {
     const map = useMapEvents({
       click: async (e) => {
+        if (!import.meta.env.VITE_OPENCAGE_API_KEY) return;
+        
         const { lat, lng } = e.latlng;
         try {
           const response = await fetch(
-            `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${apiKey}&limit=1`
+            `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${import.meta.env.VITE_OPENCAGE_API_KEY}&limit=1`
           );
           const data = await response.json();
           
@@ -218,11 +218,25 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const handleLocationSelect = useCallback(async (location: string) => {
     setSearchQuery(location);
     const coordinates = await geocodeLocation(location);
-    if (coordinates) {
+    if (coordinates && mapRef.current) {
       setMapCenter(coordinates);
       setMapZoom(13);
+      mapRef.current.setView(coordinates, 13);
     }
   }, []);
+
+  if (!import.meta.env.VITE_OPENCAGE_API_KEY) {
+    return (
+      <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
+        <div className="text-destructive space-y-2 text-center p-4">
+          <p className="font-bold">Map Service Configuration Error</p>
+          <p className="text-sm text-muted-foreground">
+            Unable to initialize map service. Please check configuration.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -239,10 +253,8 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
         <div className="text-destructive space-y-2 text-center p-4">
-          <p className="font-bold">Map Service Configuration Error</p>
-          <p className="text-sm text-muted-foreground">
-            Unable to initialize map service. Please check configuration.
-          </p>
+          <p className="font-bold">Map Service Error</p>
+          <p className="text-sm text-muted-foreground">{error}</p>
         </div>
       </div>
     );
@@ -286,7 +298,10 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
                     </Badge>
                     <p className="text-sm text-muted-foreground">{listing.description}</p>
                     <p className="font-bold text-primary">{listing.price} π</p>
-                    <p className="text-sm">{listing.location}</p>
+                    <p className="text-sm flex items-center gap-1">
+                      <MapPin className="h-4 w-4" />
+                      {listing.location}
+                    </p>
                   </div>
                 </Popup>
               </Marker>
