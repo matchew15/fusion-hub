@@ -8,7 +8,7 @@ import type { Listing } from "db/schema";
 import 'leaflet/dist/leaflet.css';
 
 // Get API key from environment
-const OPENCAGE_API_KEY = import.meta.env.VITE_OPENCAGE_API_KEY;
+const MAPBOX_API_KEY = import.meta.env.VITE_MAPBOX_API_KEY;
 
 // Define icon URLs using CDN
 const MARKER_ICON_URL = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png';
@@ -43,13 +43,13 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [map, setMap] = useState<Map | null>(null);
   const mapRef = useRef<Map | null>(null);
 
-  if (!OPENCAGE_API_KEY) {
+  if (!MAPBOX_API_KEY) {
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
         <div className="text-destructive space-y-2 text-center p-4">
           <p className="font-bold">Map Service Configuration Error</p>
           <p className="text-sm text-muted-foreground">
-            Please ensure the OpenCage API key is properly configured.
+            Please ensure the Mapbox API key is properly configured.
           </p>
         </div>
       </div>
@@ -57,16 +57,16 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   }
 
   const geocodeLocation = async (location: string) => {
-    if (!location || !OPENCAGE_API_KEY) return null;
+    if (!location || !MAPBOX_API_KEY) return null;
 
     try {
-      const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${OPENCAGE_API_KEY}&limit=1`;
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(location)}.json?access_token=${MAPBOX_API_KEY}&limit=1`;
       const response = await fetch(url);
       const data = await response.json();
 
-      if (data.results && data.results.length > 0) {
-        const { lat, lng } = data.results[0].geometry;
-        const coordinates = [Number(lat), Number(lng)] as [number, number];
+      if (data.features && data.features.length > 0) {
+        const [lng, lat] = data.features[0].center;
+        const coordinates = [lat, lng] as [number, number];
         if (map) {
           map.setView(coordinates, 13);
         }
@@ -130,7 +130,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     const [isSearching, setIsSearching] = useState(false);
 
     const handleSearch = async (query: string) => {
-      if (!query || !OPENCAGE_API_KEY) {
+      if (!query || !MAPBOX_API_KEY) {
         setSuggestions([]);
         return;
       }
@@ -138,15 +138,15 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
       setIsSearching(true);
       try {
         const response = await fetch(
-          `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${OPENCAGE_API_KEY}&limit=5`
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${MAPBOX_API_KEY}&limit=5`
         );
         const data = await response.json();
 
-        if (data.results) {
+        if (data.features) {
           setSuggestions(
-            data.results.map((result: any) => ({
-              place_name: result.formatted,
-              center: [Number(result.geometry.lat), Number(result.geometry.lng)]
+            data.features.map((feature: any) => ({
+              place_name: feature.place_name,
+              center: [feature.center[1], feature.center[0]]
             }))
           );
           setShowSuggestions(true);
@@ -208,17 +208,17 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) => void }) => {
     useMapEvents({
       click: async (e) => {
-        if (!OPENCAGE_API_KEY) return;
+        if (!MAPBOX_API_KEY) return;
         
         const { lat, lng } = e.latlng;
         try {
           const response = await fetch(
-            `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${OPENCAGE_API_KEY}&limit=1`
+            `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_API_KEY}&limit=1`
           );
           const data = await response.json();
           
-          if (data.results && data.results.length > 0) {
-            onLocationSelect(data.results[0].formatted);
+          if (data.features && data.features.length > 0) {
+            onLocationSelect(data.features[0].place_name);
           }
         } catch (error) {
           console.error('Reverse geocoding failed:', error);
@@ -270,15 +270,15 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
-          whenCreated={(map) => {
+          whenReady={(map) => {
             console.log('Map initialized');
-            setMap(map);
-            mapRef.current = map;
+            setMap(map.target);
+            mapRef.current = map.target;
           }}
         >
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='© <a href="https://www.mapbox.com/about/maps/">Mapbox</a>'
+            url={`https://api.mapbox.com/styles/v1/mapbox/streets-v11/tiles/{z}/{x}/{y}?access_token=${MAPBOX_API_KEY}`}
           />
           <MapEvents onLocationSelect={handleLocationSelect} />
           {geocodedListings.map((listing) => {
