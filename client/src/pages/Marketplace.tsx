@@ -3,6 +3,7 @@ import useSWR from "swr";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ProductCard from "@/components/marketplace/ProductCard";
+import MapView from "@/components/marketplace/MapView";
 import ListingForm from "@/components/marketplace/ListingForm";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -17,7 +18,7 @@ import type { Listing } from "db/schema";
 import { useUser } from "@/hooks/use-user";
 import { useMediaQuery } from "../hooks/use-media-query";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, Map, List } from "lucide-react";
 
 export default function Marketplace() {
   const { user } = useUser();
@@ -25,6 +26,7 @@ export default function Marketplace() {
   const [selectedType, setSelectedType] = useState<string>("all");
   const [location, setLocation] = useState("");
   const [selectedHashtags, setSelectedHashtags] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const isMobile = useMediaQuery("(max-width: 640px)");
 
   // Construct the query string for filtering
@@ -55,33 +57,45 @@ export default function Marketplace() {
     new Set(listings?.flatMap((listing) => listing.hashtags || []) || [])
   );
 
+  const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold glow-text">Marketplace</h1>
-        {user && (
-          <>
-            {isMobile ? (
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button className="neon-focus">Create Listing</Button>
-                </SheetTrigger>
-                <SheetContent side="bottom" className="p-0 h-[100dvh] w-full">
-                  <ListingForm onSuccess={() => mutate()} />
-                </SheetContent>
-              </Sheet>
-            ) : (
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button className="neon-focus">Create Listing</Button>
-                </DialogTrigger>
-                <DialogContent className="p-0 w-full max-w-2xl">
-                  <ListingForm onSuccess={() => mutate()} />
-                </DialogContent>
-              </Dialog>
-            )}
-          </>
-        )}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setViewMode(viewMode === "list" ? "map" : "list")}
+            className="neon-focus"
+          >
+            {viewMode === "list" ? <Map className="h-4 w-4" /> : <List className="h-4 w-4" />}
+          </Button>
+          {user && (
+            <>
+              {isMobile ? (
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <Button className="neon-focus">Create Listing</Button>
+                  </SheetTrigger>
+                  <SheetContent side="bottom" className="p-0 h-[100dvh] w-full">
+                    <ListingForm onSuccess={() => mutate()} />
+                  </SheetContent>
+                </Sheet>
+              ) : (
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button className="neon-focus">Create Listing</Button>
+                  </DialogTrigger>
+                  <DialogContent className="p-0 w-full max-w-2xl">
+                    <ListingForm onSuccess={() => mutate()} />
+                  </DialogContent>
+                </Dialog>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -154,7 +168,7 @@ export default function Marketplace() {
         <div className="text-center text-muted-foreground">Loading...</div>
       ) : listings.length === 0 ? (
         <div className="text-center text-muted-foreground">No listings found</div>
-      ) : (
+      ) : viewMode === "list" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {listings.map((listing) => (
             <ProductCard 
@@ -164,6 +178,25 @@ export default function Marketplace() {
             />
           ))}
         </div>
+      ) : (
+        <MapView 
+          listings={listings}
+          onListingClick={(listing) => setSelectedListing(listing)}
+        />
+      )}
+
+      {selectedListing && viewMode === "map" && (
+        <Dialog open={!!selectedListing} onOpenChange={() => setSelectedListing(null)}>
+          <DialogContent>
+            <ProductCard 
+              listing={selectedListing}
+              onDelete={() => {
+                mutate();
+                setSelectedListing(null);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

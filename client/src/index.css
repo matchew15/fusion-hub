@@ -79,7 +79,34 @@
     @apply hover:scale-105 active:scale-100 transition-transform duration-200 ease-in-out m-2;
   }
 
-  /* New spacing utilities for consistent hierarchy */
+  /* Map related styles */
+  .leaflet-container {
+    @apply bg-background !important;
+    z-index: 1;
+  }
+
+  .leaflet-popup-content-wrapper {
+    @apply bg-background border border-primary/30 !important;
+    box-shadow: 0 0 10px theme('colors.primary.DEFAULT');
+  }
+
+  .leaflet-popup-content {
+    @apply text-foreground !important;
+  }
+
+  .leaflet-popup-tip {
+    @apply bg-background border border-primary/30 !important;
+  }
+
+  .leaflet-control-zoom {
+    @apply cyber-panel !important;
+  }
+
+  .leaflet-control-zoom a {
+    @apply text-foreground bg-background hover:bg-primary/20 !important;
+  }
+
+  /* Content spacing utilities */
   .content-spacing {
     @apply space-y-8 p-8;
   }
