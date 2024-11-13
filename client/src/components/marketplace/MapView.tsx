@@ -11,15 +11,17 @@ import 'leaflet/dist/leaflet.css';
 const MARKER_ICON_URL = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png';
 const MARKER_SHADOW_URL = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png';
 
-// Create icon instance
-const defaultIcon = new Icon({
-  iconUrl: MARKER_ICON_URL,
-  shadowUrl: MARKER_SHADOW_URL,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+const getMarkerIcon = (type: string) => {
+  return new Icon({
+    iconUrl: MARKER_ICON_URL,
+    shadowUrl: MARKER_SHADOW_URL,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41],
+    className: type === 'Request' ? 'request-marker' : type === 'Service' ? 'service-marker' : 'product-marker'
+  });
+};
 
 interface MapViewProps {
   listings: Listing[];
@@ -65,11 +67,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
 
       if (data.features && data.features.length > 0) {
         const [lng, lat] = data.features[0].center;
-        const coordinates = [lat, lng] as [number, number];
-        if (map) {
-          map.setView(coordinates, 13);
-        }
-        return coordinates;
+        return [lat, lng] as [number, number];
       }
       return null;
     } catch (error) {
@@ -98,18 +96,18 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           })
         );
 
-        const validListings = geocoded.filter((listing): listing is GeocodedListing & { coordinates: [number, number] } => 
+        setGeocodedListings(geocoded);
+        
+        // Find first valid listing with coordinates to center map
+        const validListing = geocoded.find((listing): listing is GeocodedListing & { coordinates: [number, number] } => 
           'coordinates' in listing && !!listing.coordinates
         );
         
-        setGeocodedListings(geocoded);
-        
-        if (validListings.length > 0) {
-          const firstCoordinates = validListings[0].coordinates;
-          setMapCenter(firstCoordinates);
+        if (validListing) {
+          setMapCenter(validListing.coordinates);
           setMapZoom(13);
           if (map) {
-            map.setView(firstCoordinates, 13);
+            map.setView(validListing.coordinates, 13);
           }
         }
       } catch (error) {
@@ -120,7 +118,9 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
       }
     };
 
-    geocodeListings();
+    if (import.meta.env.VITE_MAPBOX_API_KEY) {
+      geocodeListings();
+    }
   }, [listings, map]);
 
   const handleLocationSelect = useCallback(async (location: string) => {
@@ -143,9 +143,8 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
       onChange(suggestion.place_name);
       setShowSuggestions(false);
       if (map) {
-        map.setView(suggestion.center, 13);
+        map.setView([suggestion.center[1], suggestion.center[0]], 13);
       }
-      // Blur input to dismiss keyboard
       inputRef.current?.blur();
     };
 
@@ -199,7 +198,6 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onBlur={() => {
-              // Delay hiding suggestions to allow click events
               setTimeout(() => setShowSuggestions(false), 200);
             }}
             onFocus={() => value && setShowSuggestions(true)}
@@ -214,7 +212,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
                 key={index}
                 className="w-full px-4 py-2 text-left hover:bg-primary/10"
                 onMouseDown={(e) => {
-                  e.preventDefault(); // Prevent input blur
+                  e.preventDefault();
                   handleSuggestionSelect(suggestion);
                 }}
               >
@@ -282,10 +280,10 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
-          whenCreated={(map) => {
+          whenReady={(map) => {
             console.log('Map initialized');
-            setMap(map);
-            mapRef.current = map;
+            setMap(map.target);
+            mapRef.current = map.target;
           }}
           style={{ height: '600px', width: '100%' }}
         >
@@ -304,7 +302,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
               <Marker
                 key={listing.id}
                 position={listing.coordinates}
-                icon={defaultIcon}
+                icon={getMarkerIcon(listing.type)}
                 eventHandlers={{
                   click: () => {
                     if (map) {
@@ -322,6 +320,15 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
                     </Badge>
                     <p className="text-sm text-muted-foreground">{listing.description}</p>
                     <p className="font-bold text-primary">{listing.price} π</p>
+                    {listing.hashtags && listing.hashtags.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {listing.hashtags.map((tag, i) => (
+                          <Badge key={i} variant="outline" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                     <p className="text-sm flex items-center gap-1">
                       <MapPin className="h-4 w-4" />
                       {listing.location}

@@ -113,16 +113,15 @@
     @apply text-foreground bg-background hover:bg-primary/20 !important;
   }
 
-  /* Content spacing utilities */
-  .content-spacing {
-    @apply space-y-8 p-8;
+  .request-marker {
+    filter: hue-rotate(120deg);
   }
 
-  .section-spacing {
-    @apply space-y-6 p-6;
+  .service-marker {
+    filter: hue-rotate(240deg);
   }
 
-  .text-content {
-    @apply space-y-4 leading-relaxed px-4;
+  .product-marker {
+    /* Default marker color */
   }
 }
