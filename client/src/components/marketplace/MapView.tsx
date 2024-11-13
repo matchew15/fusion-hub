@@ -1,28 +1,16 @@
+import 'leaflet/dist/leaflet.css';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import type { Listing } from 'db/schema';
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-// Fix for marker icons
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-
-const defaultIcon = L.icon({
-  iconUrl: markerIcon.src,
-  iconRetinaUrl: markerIcon2x.src,
-  shadowUrl: markerShadow.src,
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
-
-L.Marker.prototype.options.icon = defaultIcon;
+// Import marker icons
+import markerIconUrl from 'leaflet/dist/images/marker-icon.png';
+import markerIcon2xUrl from 'leaflet/dist/images/marker-icon-2x.png';
+import markerShadowUrl from 'leaflet/dist/images/marker-shadow.png';
 
 interface MapViewProps {
   listings: Listing[];
@@ -151,12 +139,21 @@ const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) 
 
 export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [geocodedListings, setGeocodedListings] = useState<GeocodedListing[]>([]);
-  const [mapCenter, setMapCenter] = useState<[number, number]>([0, 0]);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([20, 0]);
   const [mapZoom, setMapZoom] = useState(2);
-  const [mapKey, setMapKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const mapRef = useRef<L.Map>(null);
+
+  // Set up marker icons
+  useEffect(() => {
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconUrl: markerIconUrl,
+      iconRetinaUrl: markerIcon2xUrl,
+      shadowUrl: markerShadowUrl,
+    });
+  }, []);
 
   const handleLocationSelect = useCallback(async (location: string) => {
     setSearchQuery(location);
@@ -178,31 +175,37 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
       if (!listings.length) return;
       
       setIsLoading(true);
+      console.log('Starting geocoding for', listings.length, 'listings');
       
       try {
         const geocoded = await Promise.all(
           listings.map(async (listing) => {
-            if (!listing.location) return { ...listing };
-            
-            const coordinates = await geocodeLocation(listing.location);
-            if (!coordinates) {
+            if (!listing.location) {
+              console.log('Skipping listing without location:', listing.id);
               return { ...listing };
             }
             
+            console.log('Geocoding listing:', listing.id, listing.location);
+            const coordinates = await geocodeLocation(listing.location);
+            
+            if (!coordinates) {
+              console.warn(`No coordinates found for listing ${listing.id}`);
+              return { ...listing };
+            }
+            
+            console.log('Coordinates found:', coordinates);
             return { ...listing, coordinates };
           })
         );
 
-        const validListings = geocoded.filter((listing): listing is GeocodedListing & { coordinates: [number, number] } => 
-          !!listing.coordinates
-        );
+        const validListings = geocoded.filter(listing => listing.coordinates);
+        console.log('Valid geocoded listings:', validListings.length);
         setGeocodedListings(geocoded);
         
         if (validListings.length > 0) {
-          const firstValid = validListings[0];
+          const firstValid = validListings[0] as GeocodedListing & { coordinates: [number, number] };
           setMapCenter(firstValid.coordinates);
           setMapZoom(13);
-          setMapKey(prev => prev + 1);
         }
       } catch (error) {
         console.error('Failed to geocode listings:', error);
@@ -231,7 +234,6 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
 
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel">
         <MapContainer
-          key={mapKey}
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
@@ -240,7 +242,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           }}
         >
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <MapEvents onLocationSelect={handleLocationSelect} />
@@ -251,7 +253,6 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
               <Marker
                 key={listing.id}
                 position={listing.coordinates}
-                icon={defaultIcon}
                 eventHandlers={{
                   click: () => onListingClick?.(listing),
                 }}
