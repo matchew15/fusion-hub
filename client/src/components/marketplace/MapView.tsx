@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import type { Listing } from 'db/schema';
 import { Badge } from "@/components/ui/badge";
+import { Loader2 } from "lucide-react";
 
 // Fix for default marker icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -24,8 +25,9 @@ interface GeocodedListing extends Listing {
 
 export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [geocodedListings, setGeocodedListings] = useState<GeocodedListing[]>([]);
-  const [mapCenter, setMapCenter] = useState<[number, number]>([0, 0]);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([20, 0]); // Default to a more central position
   const [mapZoom, setMapZoom] = useState(2);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     // Load the map tiles after component mounts
@@ -37,14 +39,23 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
 
   useEffect(() => {
     const geocodeListings = async () => {
+      setIsLoading(true);
+      
       const geocoded = await Promise.all(
         listings.map(async (listing) => {
           if (!listing.location) return { ...listing };
           
           try {
-            const response = await fetch(`https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(listing.location)}&key=${process.env.OPENCAGE_API_KEY}`);
+            const response = await fetch(
+              `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(listing.location)}&key=${process.env.NEXT_PUBLIC_OPENCAGE_API_KEY}`
+            );
             const data = await response.json();
 
+            if (data.status?.code === 403) {
+              console.error('API Key error:', data.status.message);
+              return { ...listing };
+            }
+            
             if (data.results && data.results.length > 0) {
               const { lat, lng } = data.results[0].geometry;
               return {
@@ -88,10 +99,23 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           map.remove();
         }
       }
+      
+      setIsLoading(false);
     };
 
     geocodeListings();
   }, [listings]);
+
+  if (isLoading) {
+    return (
+      <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Loading map...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel">
