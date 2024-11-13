@@ -12,16 +12,18 @@ import 'leaflet/dist/leaflet.css';
 const OPENCAGE_API_KEY = import.meta.env.VITE_OPENCAGE_API_KEY;
 console.log('OpenCage API Key Status:', OPENCAGE_API_KEY ? 'Available' : 'Missing');
 
-// Define icon URLs
-const MARKER_ICON_URL = '/marker-icon.png';
-const MARKER_SHADOW_URL = '/marker-shadow.png';
+// Define icon URLs using CDN
+const MARKER_ICON_URL = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png';
+const MARKER_SHADOW_URL = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png';
 
 // Create icon instance
 const defaultIcon = new Icon({
   iconUrl: MARKER_ICON_URL,
   shadowUrl: MARKER_SHADOW_URL,
   iconSize: [25, 41],
-  iconAnchor: [12, 41]
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
 });
 
 interface MapViewProps {
@@ -229,10 +231,10 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
 
   if (isLoading) {
     return (
-      <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
-        <div className="flex items-center space-x-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Loading map...</span>
+      <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center space-y-2">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p>Loading map data...</p>
         </div>
       </div>
     );
@@ -257,11 +259,13 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
 
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel">
         <MapContainer
+          key={`${mapCenter[0]}-${mapCenter[1]}-${mapZoom}`}
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
-          whenCreated={(map) => {
-            mapRef.current = map;
+          whenReady={(map) => {
+            mapRef.current = map.target;
+            console.log('Map created successfully');
           }}
         >
           <TileLayer
@@ -270,8 +274,12 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           />
           <MapEvents onLocationSelect={handleLocationSelect} />
           {geocodedListings.map((listing) => {
-            if (!listing.coordinates) return null;
+            if (!listing.coordinates) {
+              console.log('Skipping marker for listing without coordinates:', listing.id);
+              return null;
+            }
             
+            console.log('Rendering marker for listing:', listing.id, listing.coordinates);
             return (
               <Marker
                 key={listing.id}
