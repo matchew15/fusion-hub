@@ -31,7 +31,6 @@ interface GeocodedListing extends Listing {
 }
 
 export default function MapView({ listings, onListingClick }: MapViewProps) {
-  // All hooks at the top
   const [geocodedListings, setGeocodedListings] = useState<GeocodedListing[]>([]);
   const [mapCenter, setMapCenter] = useState<[number, number]>([20, 0]);
   const [mapZoom, setMapZoom] = useState(2);
@@ -40,6 +39,21 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [map, setMap] = useState<Map | null>(null);
   const mapRef = useRef<Map | null>(null);
+
+  // Check for API key first
+  useEffect(() => {
+    if (!import.meta.env.VITE_MAPBOX_API_KEY) {
+      console.error('Mapbox API key not found');
+      setError('Map Service Configuration Error');
+      setIsLoading(false);
+      return;
+    }
+
+    // Initialize map with default view
+    setMapCenter([20, 0]);
+    setMapZoom(2);
+    setIsLoading(false);
+  }, []);
 
   const geocodeLocation = async (location: string) => {
     if (!location || !import.meta.env.VITE_MAPBOX_API_KEY) return null;
@@ -65,13 +79,6 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   };
 
   useEffect(() => {
-    // Check for API key first
-    if (!import.meta.env.VITE_MAPBOX_API_KEY) {
-      setError('Map Service Configuration Error');
-      setIsLoading(false);
-      return;
-    }
-
     const geocodeListings = async () => {
       if (!listings.length) {
         setIsLoading(false);
@@ -230,7 +237,6 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     return null;
   };
 
-  // Loading state
   if (isLoading) {
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
@@ -242,7 +248,6 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
@@ -263,16 +268,17 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
-          whenReady={(map) => {
-            setMap(map.target);
-            mapRef.current = map.target;
+          whenCreated={(map) => {
+            console.log('Map initialized');
+            setMap(map);
+            mapRef.current = map;
           }}
+          style={{ height: '600px', width: '100%' }}
         >
           <TileLayer
             attribution='© <a href="https://www.mapbox.com/about/maps/">Mapbox</a>'
-            url={`https://api.mapbox.com/styles/v1/mapbox/dark-v10/tiles/{z}/{x}/{y}?access_token=${import.meta.env.VITE_MAPBOX_API_KEY}`}
-            tileSize={512}
-            zoomOffset={-1}
+            url={`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=${import.meta.env.VITE_MAPBOX_API_KEY}`}
+            maxZoom={18}
           />
           <MapEvents onLocationSelect={handleLocationSelect} />
           {geocodedListings.map((listing) => {
