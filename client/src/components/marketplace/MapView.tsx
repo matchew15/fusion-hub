@@ -40,6 +40,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [map, setMap] = useState<Map | null>(null);
   const mapRef = useRef<Map | null>(null);
 
   if (!OPENCAGE_API_KEY) {
@@ -56,22 +57,20 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   }
 
   const geocodeLocation = async (location: string) => {
-    if (!location) return null;
+    if (!location || !OPENCAGE_API_KEY) return null;
 
     try {
-      const response = await fetch(
-        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${OPENCAGE_API_KEY}&limit=1`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`Geocoding failed: ${response.statusText}`);
-      }
-
+      const url = `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${OPENCAGE_API_KEY}&limit=1`;
+      const response = await fetch(url);
       const data = await response.json();
-      
+
       if (data.results && data.results.length > 0) {
         const { lat, lng } = data.results[0].geometry;
-        return [Number(lat), Number(lng)] as [number, number];
+        const coordinates = [Number(lat), Number(lng)] as [number, number];
+        if (map) {
+          map.setView(coordinates, 13);
+        }
+        return coordinates;
       }
       return null;
     } catch (error) {
@@ -83,13 +82,6 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   useEffect(() => {
     const geocodeListings = async () => {
       if (!listings.length) {
-        setIsLoading(false);
-        return;
-      }
-
-      if (!OPENCAGE_API_KEY) {
-        console.error('OpenCage API key not found in environment');
-        setError('Map Service Configuration Error');
         setIsLoading(false);
         return;
       }
@@ -114,8 +106,12 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
         setGeocodedListings(geocoded);
         
         if (validListings.length > 0) {
-          setMapCenter(validListings[0].coordinates);
+          const firstCoordinates = validListings[0].coordinates;
+          setMapCenter(firstCoordinates);
           setMapZoom(13);
+          if (map) {
+            map.setView(firstCoordinates, 13);
+          }
         }
       } catch (error) {
         console.error('Failed to geocode listings:', error);
@@ -126,7 +122,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     };
 
     geocodeListings();
-  }, [listings]);
+  }, [listings, map]);
 
   const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (value: string) => void }) => {
     const [suggestions, setSuggestions] = useState<Array<{ place_name: string; center: [number, number] }>>([]);
@@ -134,7 +130,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     const [isSearching, setIsSearching] = useState(false);
 
     const handleSearch = async (query: string) => {
-      if (!query) {
+      if (!query || !OPENCAGE_API_KEY) {
         setSuggestions([]);
         return;
       }
@@ -194,6 +190,9 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
                 onClick={() => {
                   onChange(suggestion.place_name);
                   setShowSuggestions(false);
+                  if (map) {
+                    map.setView(suggestion.center, 13);
+                  }
                 }}
               >
                 <MapPin className="inline-block w-4 h-4 mr-2 text-muted-foreground" />
@@ -207,8 +206,10 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   };
 
   const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) => void }) => {
-    const map = useMapEvents({
+    useMapEvents({
       click: async (e) => {
+        if (!OPENCAGE_API_KEY) return;
+        
         const { lat, lng } = e.latlng;
         try {
           const response = await fetch(
@@ -230,12 +231,12 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const handleLocationSelect = useCallback(async (location: string) => {
     setSearchQuery(location);
     const coordinates = await geocodeLocation(location);
-    if (coordinates && mapRef.current) {
+    if (coordinates && map) {
       setMapCenter(coordinates);
       setMapZoom(13);
-      mapRef.current.setView(coordinates, 13);
+      map.setView(coordinates, 13);
     }
-  }, []);
+  }, [map]);
 
   if (isLoading) {
     return (
@@ -265,11 +266,14 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
 
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel">
         <MapContainer
+          key={`map-${mapCenter[0]}-${mapCenter[1]}-${mapZoom}`}
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
-          whenReady={(event) => {
-            mapRef.current = event.target;
+          whenCreated={(map) => {
+            console.log('Map initialized');
+            setMap(map);
+            mapRef.current = map;
           }}
         >
           <TileLayer
@@ -278,15 +282,24 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           />
           <MapEvents onLocationSelect={handleLocationSelect} />
           {geocodedListings.map((listing) => {
-            if (!listing.coordinates) return null;
-            
+            if (!listing.coordinates) {
+              console.log('Skipping marker for listing without coordinates:', listing.id);
+              return null;
+            }
+
+            console.log('Rendering marker for listing:', listing.id, listing.coordinates);
             return (
               <Marker
                 key={listing.id}
                 position={listing.coordinates}
                 icon={defaultIcon}
                 eventHandlers={{
-                  click: () => onListingClick?.(listing),
+                  click: () => {
+                    if (map) {
+                      map.setView(listing.coordinates!, 13);
+                    }
+                    onListingClick?.(listing);
+                  },
                 }}
               >
                 <Popup>
