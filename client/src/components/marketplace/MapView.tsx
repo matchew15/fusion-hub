@@ -7,10 +7,16 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-// Import marker icons
-import markerIconUrl from 'leaflet/dist/images/marker-icon.png';
-import markerIcon2xUrl from 'leaflet/dist/images/marker-icon-2x.png';
-import markerShadowUrl from 'leaflet/dist/images/marker-shadow.png';
+// Define marker icon type
+type MarkerIcon = {
+  iconUrl: string;
+  iconRetinaUrl: string;
+  shadowUrl: string;
+  iconSize: [number, number];
+  iconAnchor: [number, number];
+  popupAnchor: [number, number];
+  shadowSize: [number, number];
+};
 
 interface MapViewProps {
   listings: Listing[];
@@ -20,6 +26,38 @@ interface MapViewProps {
 interface GeocodedListing extends Listing {
   coordinates?: [number, number];
 }
+
+// Geocoding function with improved error handling
+const geocodeLocation = async (location: string) => {
+  if (!location) return null;
+  
+  try {
+    console.log('Geocoding location:', location);
+    const response = await fetch(
+      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${process.env.NEXT_PUBLIC_OPENCAGE_API_KEY}&limit=1`
+    );
+    
+    if (!response.ok) {
+      throw new Error(`Geocoding failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('Geocoding response:', data);
+    
+    if (data.results && data.results.length > 0) {
+      const { lat, lng } = data.results[0].geometry;
+      const coords = [Number(lat), Number(lng)] as [number, number];
+      console.log('Coordinates found:', coords);
+      return coords;
+    }
+    
+    console.log('No coordinates found for location:', location);
+    return null;
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return null;
+  }
+};
 
 const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (value: string) => void }) => {
   const [suggestions, setSuggestions] = useState<Array<{ place_name: string; center: [number, number] }>>([]);
@@ -90,32 +128,6 @@ const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (va
   );
 };
 
-const geocodeLocation = async (location: string) => {
-  if (!location) return null;
-  
-  try {
-    const response = await fetch(
-      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${process.env.NEXT_PUBLIC_OPENCAGE_API_KEY}&limit=1`
-    );
-    
-    if (!response.ok) {
-      throw new Error(`Geocoding failed: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    
-    if (data.results && data.results.length > 0) {
-      const { lat, lng } = data.results[0].geometry;
-      return [Number(lat), Number(lng)] as [number, number];
-    }
-    
-    return null;
-  } catch (error) {
-    console.error('Geocoding error:', error);
-    return null;
-  }
-};
-
 const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) => void }) => {
   const map = useMapEvents({
     click: async (e) => {
@@ -145,15 +157,28 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const mapRef = useRef<L.Map>(null);
 
-  // Set up marker icons
+  // Initialize geocoding service
   useEffect(() => {
-    delete L.Icon.Default.prototype._getIconUrl;
-    L.Icon.Default.mergeOptions({
-      iconUrl: markerIconUrl,
-      iconRetinaUrl: markerIcon2xUrl,
-      shadowUrl: markerShadowUrl,
-    });
+    const initGeocoding = async () => {
+      if (!process.env.NEXT_PUBLIC_OPENCAGE_API_KEY) {
+        console.error('OpenCage API key is missing');
+        return;
+      }
+      
+      // Test geocoding service
+      const testCoords = await geocodeLocation('New York');
+      console.log('Geocoding service test:', testCoords);
+    };
+
+    initGeocoding();
   }, []);
+
+  // Handle map center updates
+  useEffect(() => {
+    if (mapRef.current && mapCenter) {
+      mapRef.current.setView(mapCenter, mapZoom);
+    }
+  }, [mapCenter, mapZoom]);
 
   const handleLocationSelect = useCallback(async (location: string) => {
     setSearchQuery(location);
@@ -164,12 +189,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     }
   }, []);
 
-  useEffect(() => {
-    if (mapRef.current && mapCenter) {
-      mapRef.current.setView(mapCenter, mapZoom);
-    }
-  }, [mapCenter, mapZoom]);
-
+  // Geocode listings
   useEffect(() => {
     const geocodeListings = async () => {
       if (!listings.length) return;
@@ -228,6 +248,17 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     );
   }
 
+  // Create marker icon
+  const defaultIcon = L.icon({
+    iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+  });
+
   return (
     <div className="space-y-4">
       <LocationSearchInput value={searchQuery} onChange={handleLocationSelect} />
@@ -237,8 +268,10 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
-          whenCreated={(map) => {
-            mapRef.current = map;
+          whenReady={(map) => {
+            if (mapRef.current !== map.target) {
+              mapRef.current = map.target;
+            }
           }}
         >
           <TileLayer
@@ -247,12 +280,17 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           />
           <MapEvents onLocationSelect={handleLocationSelect} />
           {geocodedListings.map((listing) => {
-            if (!listing.coordinates) return null;
+            if (!listing.coordinates) {
+              console.log('Skipping marker for listing without coordinates:', listing.id);
+              return null;
+            }
             
+            console.log('Adding marker for listing:', listing.id, listing.coordinates);
             return (
               <Marker
                 key={listing.id}
                 position={listing.coordinates}
+                icon={defaultIcon}
                 eventHandlers={{
                   click: () => onListingClick?.(listing),
                 }}
