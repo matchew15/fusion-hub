@@ -1,27 +1,15 @@
 import { db } from '../db';
-import { users, escrowTransactions } from '../db/schema';
+import { users, escrowTransactions, type EscrowTransaction } from '../db/schema';
 import { eq, and } from 'drizzle-orm';
 import { piHelper } from '../lib/pi-helper';
+import { Decimal } from 'decimal.js';
 
 export interface CreateEscrowParams {
   sellerId: number;
   buyerId: number;
-  amount: number;
+  amount: Decimal;
   memo: string;
   releaseConditions: string;
-}
-
-export interface EscrowTransaction {
-  id: number;
-  sellerId: number;
-  buyerId: number;
-  amount: number;
-  status: 'pending' | 'locked' | 'released' | 'disputed' | 'refunded' | 'cancelled';
-  paymentIdentifier?: string;
-  memo: string;
-  releaseConditions: string;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export class EscrowService {
@@ -42,7 +30,7 @@ export class EscrowService {
     const [transaction] = await db.insert(escrowTransactions).values({
       sellerId,
       buyerId,
-      amount,
+      amount: amount.toString(),
       memo,
       releaseConditions,
       status: 'pending'
@@ -150,6 +138,88 @@ export class EscrowService {
       .returning();
 
     return updatedTransaction;
+  }
+
+  async resolveDispute(
+    transactionId: number,
+    resolverId: number,
+    resolution: 'refund' | 'release',
+    notes: string
+  ): Promise<EscrowTransaction> {
+    const [transaction] = await db
+      .select()
+      .from(escrowTransactions)
+      .where(
+        and(
+          eq(escrowTransactions.id, transactionId),
+          eq(escrowTransactions.status, 'disputed')
+        )
+      )
+      .limit(1);
+
+    if (!transaction) {
+      throw new Error('Transaction not found or not in dispute');
+    }
+
+    // Verify the payment identifier exists
+    if (!transaction.paymentIdentifier) {
+      throw new Error('Payment identifier missing');
+    }
+
+    try {
+      if (resolution === 'refund') {
+        // Handle refund through Pi SDK
+        await piHelper.cancelPayment(transaction.paymentIdentifier);
+        
+        // Update transaction status
+        const [updatedTransaction] = await db
+          .update(escrowTransactions)
+          .set({
+            status: 'refunded',
+            disputeStatus: 'resolved',
+            disputeResolutionNotes: notes,
+            disputeResolvedBy: resolverId,
+            disputeResolvedAt: new Date(),
+            updatedAt: new Date()
+          })
+          .where(eq(escrowTransactions.id, transactionId))
+          .returning();
+
+        return updatedTransaction;
+      } else {
+        // Release funds to seller
+        await piHelper.completePayment(transaction.paymentIdentifier);
+        
+        // Update transaction status
+        const [updatedTransaction] = await db
+          .update(escrowTransactions)
+          .set({
+            status: 'released',
+            disputeStatus: 'resolved',
+            disputeResolutionNotes: notes,
+            disputeResolvedBy: resolverId,
+            disputeResolvedAt: new Date(),
+            updatedAt: new Date()
+          })
+          .where(eq(escrowTransactions.id, transactionId))
+          .returning();
+
+        return updatedTransaction;
+      }
+    } catch (error) {
+      console.error('Dispute resolution error:', error);
+      throw new Error('Failed to resolve dispute');
+    }
+  }
+
+  async getDisputedTransactions(): Promise<EscrowTransaction[]> {
+    const transactions = await db
+      .select()
+      .from(escrowTransactions)
+      .where(eq(escrowTransactions.status, 'disputed'))
+      .orderBy(escrowTransactions.createdAt);
+
+    return transactions;
   }
 }
 

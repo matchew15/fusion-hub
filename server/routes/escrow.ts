@@ -18,6 +18,11 @@ const disputeSchema = z.object({
   reason: z.string().min(10)
 });
 
+const resolveDisputeSchema = z.object({
+  resolution: z.enum(['refund', 'release']),
+  notes: z.string().min(10)
+});
+
 // Create escrow transaction
 router.post('/transactions', authenticateUser, async (req, res) => {
   try {
@@ -32,7 +37,6 @@ router.post('/transactions', authenticateUser, async (req, res) => {
 
     const { sellerId, amount, memo, releaseConditions } = validation.data;
     
-    // Create escrow transaction
     const transaction = await escrowService.createTransaction({
       sellerId,
       buyerId: req.user!.id,
@@ -41,7 +45,6 @@ router.post('/transactions', authenticateUser, async (req, res) => {
       releaseConditions
     });
 
-    // Initialize Pi payment
     const payment = await piHelper.createPayment({
       amount: transaction.amount,
       memo: transaction.memo,
@@ -51,7 +54,6 @@ router.post('/transactions', authenticateUser, async (req, res) => {
       }
     });
 
-    // Lock funds in escrow
     const lockedTransaction = await escrowService.lockFunds(
       transaction.id,
       payment.identifier!
@@ -123,6 +125,55 @@ router.post('/transactions/:id/dispute', authenticateUser, async (req, res) => {
     console.error('Initiate dispute error:', error);
     res.status(500).json({
       message: 'Failed to initiate dispute',
+      error: error.message
+    });
+  }
+});
+
+// Resolve dispute
+router.post('/transactions/:id/resolve-dispute', authenticateUser, async (req, res) => {
+  try {
+    const validation = resolveDisputeSchema.safeParse(req.body);
+    
+    if (!validation.success) {
+      return res.status(400).json({
+        message: 'Invalid resolution data',
+        errors: validation.error.errors
+      });
+    }
+
+    const transactionId = parseInt(req.params.id);
+    const { resolution, notes } = validation.data;
+
+    const transaction = await escrowService.resolveDispute(
+      transactionId,
+      req.user!.id,
+      resolution,
+      notes
+    );
+
+    res.json({
+      message: 'Dispute resolved successfully',
+      transaction
+    });
+  } catch (error: any) {
+    console.error('Resolve dispute error:', error);
+    res.status(500).json({
+      message: 'Failed to resolve dispute',
+      error: error.message
+    });
+  }
+});
+
+// Get disputed transactions
+router.get('/disputed-transactions', authenticateUser, async (req, res) => {
+  try {
+    const transactions = await escrowService.getDisputedTransactions();
+    res.json({ transactions });
+  } catch (error: any) {
+    console.error('Get disputed transactions error:', error);
+    res.status(500).json({
+      message: 'Failed to get disputed transactions',
       error: error.message
     });
   }

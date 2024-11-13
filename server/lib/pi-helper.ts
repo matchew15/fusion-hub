@@ -11,6 +11,7 @@ interface PiNetwork {
     metadata: Record<string, any>;
   }): Promise<PiPayment>;
   completePayment(identifier: string): Promise<void>;
+  cancelPayment(identifier: string): Promise<void>;
 }
 
 interface PiPayment {
@@ -97,6 +98,20 @@ class PiHelper {
       console.info('Payment completed successfully');
     } catch (error) {
       throw this.formatError(error, 'Complete Payment');
+    }
+  }
+
+  async cancelPayment(identifier: string): Promise<void> {
+    if (!this.initialized) {
+      await this.init();
+    }
+
+    try {
+      console.info('Cancelling payment:', identifier);
+      await this.sdk!.cancelPayment(identifier);
+      console.info('Payment cancelled successfully');
+    } catch (error) {
+      throw this.formatError(error, 'Cancel Payment');
     }
   }
 }

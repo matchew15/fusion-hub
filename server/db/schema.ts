@@ -1,5 +1,4 @@
-import { serial, text, timestamp, numeric, pgEnum } from 'drizzle-orm/pg-core';
-import { pgTable } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, numeric, pgEnum, serial } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -29,13 +28,16 @@ export const escrowTransactions = pgTable('escrow_transactions', {
   id: serial('id').primaryKey(),
   sellerId: serial('seller_id').references(() => users.id),
   buyerId: serial('buyer_id').references(() => users.id),
-  amount: numeric('amount').notNull(),
+  amount: numeric('amount', { precision: 10, scale: 6 }).notNull(),
   status: transactionStatusEnum('status').notNull().default('pending'),
   paymentIdentifier: text('payment_identifier'),
   memo: text('memo').notNull(),
   releaseConditions: text('release_conditions').notNull(),
   disputeReason: text('dispute_reason'),
   disputeStatus: disputeStatusEnum('dispute_status'),
+  disputeResolutionNotes: text('dispute_resolution_notes'),
+  disputeResolvedBy: serial('dispute_resolved_by').references(() => users.id),
+  disputeResolvedAt: timestamp('dispute_resolved_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow()
 });
