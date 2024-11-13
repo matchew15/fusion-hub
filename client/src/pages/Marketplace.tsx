@@ -22,7 +22,7 @@ import { X } from "lucide-react";
 export default function Marketplace() {
   const { user } = useUser();
   const [search, setSearch] = useState("");
-  const [selectedType, setSelectedType] = useState<string>("");
+  const [selectedType, setSelectedType] = useState<string>("all");
   const [location, setLocation] = useState("");
   const [selectedHashtags, setSelectedHashtags] = useState<string[]>([]);
   const isMobile = useMediaQuery("(max-width: 640px)");
@@ -30,7 +30,7 @@ export default function Marketplace() {
   // Construct the query string for filtering
   const queryString = new URLSearchParams();
   if (search) queryString.append("search", search);
-  if (selectedType) queryString.append("type", selectedType);
+  if (selectedType && selectedType !== "all") queryString.append("type", selectedType);
   if (location) queryString.append("location", location);
   if (selectedHashtags.length > 0) {
     queryString.append("hashtags", selectedHashtags.join(","));
@@ -97,7 +97,7 @@ export default function Marketplace() {
             <SelectValue placeholder="Filter by type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Types</SelectItem>
+            <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="Product">Product</SelectItem>
             <SelectItem value="Service">Service</SelectItem>
             <SelectItem value="Request">Request</SelectItem>
