@@ -31,8 +31,8 @@ interface GeocodedListing extends Listing {
 }
 
 export default function MapView({ listings, onListingClick }: MapViewProps) {
-  // Get API key from environment
-  const apiKey = import.meta.env.VITE_OPENCAGE_API_KEY;
+  // Get API key from environment with fallback
+  const apiKey = import.meta.env.VITE_OPENCAGE_API_KEY || process.env.VITE_OPENCAGE_API_KEY;
   console.log('API Key status:', apiKey ? 'Available' : 'Missing'); // Only log status, never the key itself
 
   const [geocodedListings, setGeocodedListings] = useState<GeocodedListing[]>([]);
@@ -253,8 +253,8 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
-          whenReady={(map) => {
-            mapRef.current = map.target;
+          whenReady={(event) => {
+            mapRef.current = event.target;
           }}
         >
           <TileLayer
