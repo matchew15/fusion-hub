@@ -4,6 +4,7 @@ import { setupVite, serveStatic } from "./vite";
 import { createServer } from "http";
 import { setupAuth } from "./auth";
 import escrowRoutes from "./routes/escrow";
+import transactionRoutes from "./routes/transactions";
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -15,6 +16,7 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
   
   // Register API routes
   app.use('/api/escrow', escrowRoutes);
+  app.use('/api/transactions', transactionRoutes);
   registerRoutes(app);
   
   const server = createServer(app);

@@ -3,6 +3,7 @@ import { Card } from "@/components/ui/card";
 import { useUser } from "@/hooks/use-user";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
+import TransactionHistory from "@/components/TransactionHistory";
 
 export default function Home() {
   const { user } = useUser();
@@ -19,39 +20,45 @@ export default function Home() {
         </p>
       </section>
 
-      <div className="grid md:grid-cols-3 gap-6 mt-12">
-        <Card className="cyber-panel p-6 space-y-4">
-          <h3 className="text-2xl font-bold text-primary">{t('home.features.trade.title')}</h3>
-          <p className="text-muted-foreground">
-            {t('home.features.trade.description')}
-          </p>
-          <Link href="/marketplace">
-            <Button className="w-full neon-border">{t('home.features.trade.action')}</Button>
-          </Link>
-        </Card>
+      {user ? (
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card className="cyber-panel p-6 space-y-4">
+              <h3 className="text-2xl font-bold text-primary">{t('home.features.trade.title')}</h3>
+              <p className="text-muted-foreground">
+                {t('home.features.trade.description')}
+              </p>
+              <Link href="/marketplace">
+                <Button className="w-full neon-border">{t('home.features.trade.action')}</Button>
+              </Link>
+            </Card>
 
-        <Card className="cyber-panel p-6 space-y-4">
-          <h3 className="text-2xl font-bold text-primary">{t('home.features.chat.title')}</h3>
-          <p className="text-muted-foreground">
-            {t('home.features.chat.description')}
-          </p>
-          <Link href="/chat">
-            <Button className="w-full neon-border">{t('home.features.chat.action')}</Button>
-          </Link>
-        </Card>
+            <Card className="cyber-panel p-6 space-y-4">
+              <h3 className="text-2xl font-bold text-primary">{t('home.features.chat.title')}</h3>
+              <p className="text-muted-foreground">
+                {t('home.features.chat.description')}
+              </p>
+              <Link href="/chat">
+                <Button className="w-full neon-border">{t('home.features.chat.action')}</Button>
+              </Link>
+            </Card>
 
-        <Card className="cyber-panel p-6 space-y-4">
-          <h3 className="text-2xl font-bold text-primary">{t('home.features.wallet.title')}</h3>
-          <p className="text-muted-foreground">
-            {t('home.features.wallet.description')}
-          </p>
-          <Link href="/wallet">
-            <Button className="w-full neon-border">{t('home.features.wallet.action')}</Button>
-          </Link>
-        </Card>
-      </div>
+            <Card className="cyber-panel p-6 space-y-4">
+              <h3 className="text-2xl font-bold text-primary">{t('home.features.wallet.title')}</h3>
+              <p className="text-muted-foreground">
+                {t('home.features.wallet.description')}
+              </p>
+              <Link href="/wallet">
+                <Button className="w-full neon-border">{t('home.features.wallet.action')}</Button>
+              </Link>
+            </Card>
+          </div>
 
-      {!user && (
+          <div>
+            <TransactionHistory />
+          </div>
+        </div>
+      ) : (
         <Card className="cyber-panel p-8 mt-8 text-center">
           <h2 className="text-3xl font-bold mb-4 glow-text">{t('home.getStarted.title')}</h2>
           <p className="text-muted-foreground mb-6">
