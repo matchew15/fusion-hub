@@ -15,6 +15,11 @@ const defaultIcon = new Icon({
   iconAnchor: [12, 41]
 });
 
+const OPENCAGE_API_KEY = import.meta.env.VITE_OPENCAGE_API_KEY;
+if (!OPENCAGE_API_KEY) {
+  console.error('OpenCage API key is missing');
+}
+
 interface MapViewProps {
   listings: Listing[];
   onListingClick?: (listing: Listing) => void;
@@ -25,25 +30,20 @@ interface GeocodedListing extends Listing {
 }
 
 const geocodeLocation = async (location: string) => {
-  if (!location) return null;
+  if (!location || !OPENCAGE_API_KEY) return null;
   
-  const apiKey = import.meta.env.VITE_OPENCAGE_API_KEY;
-  if (!apiKey) {
-    console.error('OpenCage API key is missing');
-    return null;
-  }
-
   try {
+    console.log('Geocoding location:', location);
     const response = await fetch(
-      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${apiKey}&limit=1`
+      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${OPENCAGE_API_KEY}&limit=1`
     );
     
-    const data = await response.json();
-    
-    if (data.status?.code !== 200) {
-      throw new Error(`Geocoding failed: ${data.status?.message}`);
+    if (!response.ok) {
+      throw new Error(`Geocoding failed: ${response.statusText}`);
     }
 
+    const data = await response.json();
+    
     if (data.results && data.results.length > 0) {
       const { lat, lng } = data.results[0].geometry;
       return [Number(lat), Number(lng)] as [number, number];
@@ -61,14 +61,14 @@ const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (va
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const handleSearch = async (query: string) => {
-    if (!query) {
+    if (!query || !OPENCAGE_API_KEY) {
       setSuggestions([]);
       return;
     }
 
     try {
       const response = await fetch(
-        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${import.meta.env.VITE_OPENCAGE_API_KEY}&limit=5`
+        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${OPENCAGE_API_KEY}&limit=5`
       );
       const data = await response.json();
 
@@ -128,10 +128,12 @@ const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (va
 const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) => void }) => {
   const map = useMapEvents({
     click: async (e) => {
+      if (!OPENCAGE_API_KEY) return;
+      
       const { lat, lng } = e.latlng;
       try {
         const response = await fetch(
-          `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${import.meta.env.VITE_OPENCAGE_API_KEY}&limit=1`
+          `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${OPENCAGE_API_KEY}&limit=1`
         );
         const data = await response.json();
         
@@ -154,7 +156,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const mapRef = useRef<L.Map>(null);
 
-  if (!import.meta.env.VITE_OPENCAGE_API_KEY) {
+  if (!OPENCAGE_API_KEY) {
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
         <div className="text-destructive">
@@ -190,7 +192,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
         );
 
         const validListings = geocoded.filter((listing): listing is GeocodedListing & { coordinates: [number, number] } => 
-          !!listing.coordinates
+          'coordinates' in listing && !!listing.coordinates
         );
         
         setGeocodedListings(geocoded);
@@ -230,7 +232,9 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
-          ref={mapRef}
+          whenReady={(map) => {
+            mapRef.current = map.target;
+          }}
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
