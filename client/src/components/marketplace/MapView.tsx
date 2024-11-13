@@ -137,6 +137,17 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     const [suggestions, setSuggestions] = useState<Array<{ place_name: string; center: [number, number] }>>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isSearching, setIsSearching] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const handleSuggestionSelect = (suggestion: { place_name: string; center: [number, number] }) => {
+      onChange(suggestion.place_name);
+      setShowSuggestions(false);
+      if (map) {
+        map.setView(suggestion.center, 13);
+      }
+      // Blur input to dismiss keyboard
+      inputRef.current?.blur();
+    };
 
     const handleSearch = async (query: string) => {
       if (!query || !import.meta.env.VITE_MAPBOX_API_KEY) {
@@ -184,8 +195,14 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
           )}
           <Input
+            ref={inputRef}
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onBlur={() => {
+              // Delay hiding suggestions to allow click events
+              setTimeout(() => setShowSuggestions(false), 200);
+            }}
+            onFocus={() => value && setShowSuggestions(true)}
             placeholder="Search location..."
             className="cyber-panel neon-focus pl-10"
           />
@@ -196,12 +213,9 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
               <button
                 key={index}
                 className="w-full px-4 py-2 text-left hover:bg-primary/10"
-                onClick={() => {
-                  onChange(suggestion.place_name);
-                  setShowSuggestions(false);
-                  if (map) {
-                    map.setView(suggestion.center, 13);
-                  }
+                onMouseDown={(e) => {
+                  e.preventDefault(); // Prevent input blur
+                  handleSuggestionSelect(suggestion);
                 }}
               >
                 <MapPin className="inline-block w-4 h-4 mr-2 text-muted-foreground" />
