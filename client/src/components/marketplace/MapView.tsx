@@ -15,10 +15,8 @@ const defaultIcon = new Icon({
   iconAnchor: [12, 41]
 });
 
-const OPENCAGE_API_KEY = import.meta.env.VITE_OPENCAGE_API_KEY;
-if (!OPENCAGE_API_KEY) {
-  console.error('OpenCage API key is missing');
-}
+const OPENCAGE_API_KEY = process.env.OPENCAGE_API_KEY || import.meta.env.VITE_OPENCAGE_API_KEY;
+console.log('API Key status:', OPENCAGE_API_KEY ? 'Available' : 'Missing');
 
 interface MapViewProps {
   listings: Listing[];
@@ -30,7 +28,10 @@ interface GeocodedListing extends Listing {
 }
 
 const geocodeLocation = async (location: string) => {
-  if (!location || !OPENCAGE_API_KEY) return null;
+  if (!location || !OPENCAGE_API_KEY) {
+    console.log('Geocoding skipped:', !location ? 'No location provided' : 'No API key available');
+    return null;
+  }
   
   try {
     console.log('Geocoding location:', location);
@@ -43,12 +44,16 @@ const geocodeLocation = async (location: string) => {
     }
 
     const data = await response.json();
+    console.log('Geocoding response status:', data.status?.message || 'OK');
     
     if (data.results && data.results.length > 0) {
       const { lat, lng } = data.results[0].geometry;
-      return [Number(lat), Number(lng)] as [number, number];
+      const coords = [Number(lat), Number(lng)] as [number, number];
+      console.log('Coordinates found:', coords);
+      return coords;
     }
     
+    console.log('No coordinates found for location:', location);
     return null;
   } catch (error) {
     console.error('Geocoding error:', error);
@@ -159,8 +164,9 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   if (!OPENCAGE_API_KEY) {
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
-        <div className="text-destructive">
-          Error: OpenCage API key is missing
+        <div className="text-destructive space-y-2">
+          <p>Error: Geocoding service is currently unavailable</p>
+          <p className="text-sm text-muted-foreground">Please try again later</p>
         </div>
       </div>
     );
