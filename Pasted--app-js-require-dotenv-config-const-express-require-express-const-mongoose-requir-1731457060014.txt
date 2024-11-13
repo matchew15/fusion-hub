@@ -1,0 +1,124 @@
+// app.js
+require('dotenv').config();
+const express = require('express');
+const mongoose = require('mongoose');
+const { PiNetwork } = require('pi-sdk'); // Assuming a fictional SDK interface
+
+// App and Middleware setup
+const app = express();
+app.use(express.json());
+
+// Database Connection
+mongoose.connect(process.env.DATABASE_URL, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('MongoDB connection error:', err));
+
+// Schemas
+const userSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  piWalletId: { type: String, required: true }
+});
+
+const transactionSchema = new mongoose.Schema({
+  sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  recipient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  amount: { type: Number, required: true },
+  status: { type: String, enum: ['pending', 'released', 'refunded'], default: 'pending' }
+});
+
+const User = mongoose.model('User', userSchema);
+const Transaction = mongoose.model('Transaction', transactionSchema);
+
+// Pi Network Configuration
+const pi = new PiNetwork(process.env.PI_SDK_KEY, process.env.PI_API_KEY, { env: process.env.NODE_ENV });
+
+// Routes
+
+// Register a new user
+app.post('/register', async (req, res) => {
+  try {
+    const { username, piWalletId } = req.body;
+
+    // Validate input
+    if (!username || !piWalletId) {
+      return res.status(400).json({ error: 'Username and Pi Wallet ID are required' });
+    }
+
+    const user = new User({ username, piWalletId });
+    await user.save();
+    res.status(201).json({ user });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Initiate a new escrow transaction
+app.post('/transaction', async (req, res) => {
+  try {
+    const { senderId, recipientId, amount } = req.body;
+
+    // Validate input
+    if (!senderId || !recipientId || !amount) {
+      return res.status(400).json({ error: 'Sender, recipient, and amount are required' });
+    }
+
+    const sender = await User.findById(senderId);
+    const recipient = await User.findById(recipientId);
+
+    if (!sender || !recipient) {
+      return res.status(404).json({ error: 'Sender or recipient not found' });
+    }
+
+    const transaction = new Transaction({ sender: sender._id, recipient: recipient._id, amount });
+    await transaction.save();
+
+    // Initiate transaction in Pi Network SDK (Assuming a 'createPayment' function)
+    try {
+      const piTransaction = await pi.createPayment({
+        amount,
+        memo: 'Escrow transaction',
+        metadata: { transactionId: transaction._id }
+      });
+
+      transaction.status = 'pending';
+      await transaction.save();
+
+      res.status(201).json({ transaction, piTransaction });
+    } catch (piError) {
+      await transaction.remove(); // Clean up in case of Pi transaction failure
+      res.status(500).json({ error: 'Pi Network transaction initiation failed', details: piError.message });
+    }
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Release funds for a transaction
+app.post('/transaction/:id/release', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const transaction = await Transaction.findById(id);
+
+    // Check if the transaction is valid and pending
+    if (!transaction || transaction.status !== 'pending') {
+      return res.status(400).json({ error: 'Transaction not found or already processed' });
+    }
+
+    // Simulate releasing payment through Pi SDK (Assuming a 'releasePayment' function)
+    try {
+      await pi.releasePayment(transaction._id);
+      transaction.status = 'released';
+      await transaction.save();
+
+      res.json({ message: 'Funds released', transaction });
+    } catch (piReleaseError) {
+      res.status(500).json({ error: 'Failed to release funds via Pi Network', details: piReleaseError.message });
+    }
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// Start the server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
