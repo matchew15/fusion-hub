@@ -5,6 +5,7 @@ import { createServer } from "http";
 import { setupAuth } from "./auth";
 import escrowRoutes from "./routes/escrow";
 import transactionRoutes from "./routes/transactions";
+import { autoReleaseJob } from "./jobs/autoRelease";
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -33,6 +34,19 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
   } else {
     serveStatic(app);
   }
+
+  // Start the auto-release job
+  autoReleaseJob.start();
+
+  // Cleanup on server shutdown
+  process.on('SIGTERM', () => {
+    console.info('SIGTERM signal received: closing HTTP server');
+    autoReleaseJob.stop();
+    server.close(() => {
+      console.info('HTTP server closed');
+      process.exit(0);
+    });
+  });
 
   const PORT = 5000;
   server.listen(PORT, "0.0.0.0", () => {

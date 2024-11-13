@@ -33,6 +33,7 @@ export const escrowTransactions = pgTable('escrow_transactions', {
   paymentIdentifier: text('payment_identifier'),
   memo: text('memo').notNull(),
   releaseConditions: text('release_conditions').notNull(),
+  autoReleaseAt: timestamp('auto_release_at'),
   disputeReason: text('dispute_reason'),
   disputeStatus: disputeStatusEnum('dispute_status'),
   disputeResolutionNotes: text('dispute_resolution_notes'),

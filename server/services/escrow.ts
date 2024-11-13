@@ -1,6 +1,6 @@
 import { db } from '../db';
 import { users, escrowTransactions, type EscrowTransaction } from '../db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, lt, sql } from 'drizzle-orm';
 import { piHelper } from '../lib/pi-helper';
 import { Decimal } from 'decimal.js';
 
@@ -13,6 +13,8 @@ export interface CreateEscrowParams {
 }
 
 export class EscrowService {
+  private readonly RELEASE_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
   async createTransaction(params: CreateEscrowParams): Promise<EscrowTransaction> {
     const { sellerId, buyerId, amount, memo, releaseConditions } = params;
     
@@ -33,7 +35,8 @@ export class EscrowService {
       amount: amount.toString(),
       memo,
       releaseConditions,
-      status: 'pending'
+      status: 'pending',
+      autoReleaseAt: new Date(Date.now() + this.RELEASE_TIMEOUT)
     }).returning();
 
     return transaction;
@@ -80,6 +83,10 @@ export class EscrowService {
       throw new Error('Transaction not found or unauthorized');
     }
 
+    return await this.processRelease(transaction);
+  }
+
+  private async processRelease(transaction: EscrowTransaction): Promise<EscrowTransaction> {
     // Release funds through Pi SDK
     if (!transaction.paymentIdentifier) {
       throw new Error('Payment identifier missing');
@@ -94,10 +101,39 @@ export class EscrowService {
         status: 'released',
         updatedAt: new Date()
       })
-      .where(eq(escrowTransactions.id, transactionId))
+      .where(eq(escrowTransactions.id, transaction.id))
       .returning();
 
     return updatedTransaction;
+  }
+
+  async checkAndProcessAutoReleases(): Promise<void> {
+    try {
+      // Get all transactions eligible for auto-release
+      const transactions = await db
+        .select()
+        .from(escrowTransactions)
+        .where(
+          and(
+            eq(escrowTransactions.status, 'locked'),
+            lt(escrowTransactions.autoReleaseAt, new Date()),
+            sql`dispute_status IS NULL OR dispute_status != 'pending'`
+          )
+        );
+
+      // Process each transaction
+      for (const transaction of transactions) {
+        try {
+          await this.processRelease(transaction);
+          console.info(`Auto-released transaction ${transaction.id}`);
+        } catch (error) {
+          console.error(`Failed to auto-release transaction ${transaction.id}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error('Auto-release process error:', error);
+      throw error;
+    }
   }
 
   async initiateDispute(
