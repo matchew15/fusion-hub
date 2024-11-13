@@ -30,141 +30,11 @@ interface GeocodedListing extends Listing {
   coordinates?: [number, number];
 }
 
-const geocodeLocation = async (location: string) => {
-  if (!location) {
-    console.log('Geocoding skipped: No location provided');
-    return null;
-  }
-
-  const apiKey = import.meta.env.VITE_OPENCAGE_API_KEY;
-  if (!apiKey) {
-    console.log('Geocoding skipped: API key not available');
-    return null;
-  }
-
-  try {
-    const response = await fetch(
-      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${apiKey}&limit=1`
-    );
-    
-    if (!response.ok) {
-      throw new Error(`Geocoding failed: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    
-    if (data.results && data.results.length > 0) {
-      const { lat, lng } = data.results[0].geometry;
-      return [Number(lat), Number(lng)] as [number, number];
-    }
-    return null;
-  } catch (error) {
-    console.error('Geocoding error:', error);
-    return null;
-  }
-};
-
-const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (value: string) => void }) => {
-  const [suggestions, setSuggestions] = useState<Array<{ place_name: string; center: [number, number] }>>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-
-  const handleSearch = async (query: string) => {
-    if (!query) {
-      setSuggestions([]);
-      return;
-    }
-
-    const apiKey = import.meta.env.VITE_OPENCAGE_API_KEY;
-    if (!apiKey) {
-      console.log('Location search skipped: API key not available');
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${apiKey}&limit=5`
-      );
-      const data = await response.json();
-
-      if (data.results) {
-        setSuggestions(
-          data.results.map((result: any) => ({
-            place_name: result.formatted,
-            center: [Number(result.geometry.lat), Number(result.geometry.lng)]
-          }))
-        );
-        setShowSuggestions(true);
-      }
-    } catch (error) {
-      console.error('Location search failed:', error);
-    }
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (value) handleSearch(value);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [value]);
-
-  return (
-    <div className="relative">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-        <Input
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="Search location..."
-          className="cyber-panel neon-focus pl-10"
-        />
-      </div>
-      {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-background border border-primary/30 rounded-md shadow-lg">
-          {suggestions.map((suggestion, index) => (
-            <button
-              key={index}
-              className="w-full px-4 py-2 text-left hover:bg-primary/10"
-              onClick={() => {
-                onChange(suggestion.place_name);
-                setShowSuggestions(false);
-              }}
-            >
-              {suggestion.place_name}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
-
-const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) => void }) => {
-  const apiKey = import.meta.env.VITE_OPENCAGE_API_KEY;
-  
-  const map = useMapEvents({
-    click: async (e) => {
-      if (!apiKey) return;
-      
-      const { lat, lng } = e.latlng;
-      try {
-        const response = await fetch(
-          `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${apiKey}&limit=1`
-        );
-        const data = await response.json();
-        
-        if (data.results && data.results.length > 0) {
-          onLocationSelect(data.results[0].formatted);
-        }
-      } catch (error) {
-        console.error('Reverse geocoding failed:', error);
-      }
-    },
-  });
-  return null;
-};
-
 export default function MapView({ listings, onListingClick }: MapViewProps) {
+  // Get API key from environment
+  const apiKey = import.meta.env.VITE_OPENCAGE_API_KEY;
+  console.log('API Key status:', apiKey ? 'Available' : 'Missing'); // Only log status, never the key itself
+
   const [geocodedListings, setGeocodedListings] = useState<GeocodedListing[]>([]);
   const [mapCenter, setMapCenter] = useState<[number, number]>([20, 0]);
   const [mapZoom, setMapZoom] = useState(2);
@@ -173,6 +43,34 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const mapRef = useRef<Map | null>(null);
 
+  const geocodeLocation = async (location: string) => {
+    if (!location || !apiKey) {
+      console.log('Geocoding skipped:', !location ? 'No location provided' : 'No API key available');
+      return null;
+    }
+
+    try {
+      const response = await fetch(
+        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${apiKey}&limit=1`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Geocoding failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.results && data.results.length > 0) {
+        const { lat, lng } = data.results[0].geometry;
+        return [Number(lat), Number(lng)] as [number, number];
+      }
+      return null;
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     const geocodeListings = async () => {
       if (!listings.length) {
@@ -180,15 +78,16 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
         return;
       }
 
-      if (!import.meta.env.VITE_OPENCAGE_API_KEY) {
+      if (!apiKey) {
+        console.error('OpenCage API key not found in environment');
         setError('Map Service Unavailable');
         setIsLoading(false);
         return;
       }
-      
+
       setIsLoading(true);
       setError(null);
-      
+
       try {
         const geocoded = await Promise.all(
           listings.map(async (listing) => {
@@ -218,7 +117,99 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     };
 
     geocodeListings();
-  }, [listings]);
+  }, [listings, apiKey]);
+
+  const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (value: string) => void }) => {
+    const [suggestions, setSuggestions] = useState<Array<{ place_name: string; center: [number, number] }>>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+
+    const handleSearch = async (query: string) => {
+      if (!query || !apiKey) {
+        setSuggestions([]);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${apiKey}&limit=5`
+        );
+        const data = await response.json();
+
+        if (data.results) {
+          setSuggestions(
+            data.results.map((result: any) => ({
+              place_name: result.formatted,
+              center: [Number(result.geometry.lat), Number(result.geometry.lng)]
+            }))
+          );
+          setShowSuggestions(true);
+        }
+      } catch (error) {
+        console.error('Location search failed:', error);
+      }
+    };
+
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        if (value) handleSearch(value);
+      }, 300);
+
+      return () => clearTimeout(timer);
+    }, [value]);
+
+    return (
+      <div className="relative">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <Input
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Search location..."
+            className="cyber-panel neon-focus pl-10"
+          />
+        </div>
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="absolute z-50 w-full mt-1 bg-background border border-primary/30 rounded-md shadow-lg">
+            {suggestions.map((suggestion, index) => (
+              <button
+                key={index}
+                className="w-full px-4 py-2 text-left hover:bg-primary/10"
+                onClick={() => {
+                  onChange(suggestion.place_name);
+                  setShowSuggestions(false);
+                }}
+              >
+                {suggestion.place_name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) => void }) => {
+    const map = useMapEvents({
+      click: async (e) => {
+        if (!apiKey) return;
+        
+        const { lat, lng } = e.latlng;
+        try {
+          const response = await fetch(
+            `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${apiKey}&limit=1`
+          );
+          const data = await response.json();
+          
+          if (data.results && data.results.length > 0) {
+            onLocationSelect(data.results[0].formatted);
+          }
+        } catch (error) {
+          console.error('Reverse geocoding failed:', error);
+        }
+      },
+    });
+    return null;
+  };
 
   const handleLocationSelect = useCallback(async (location: string) => {
     setSearchQuery(location);
@@ -262,8 +253,8 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
-          whenCreated={(map) => {
-            mapRef.current = map;
+          whenReady={(map) => {
+            mapRef.current = map.target;
           }}
         >
           <TileLayer
