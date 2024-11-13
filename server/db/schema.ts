@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, numeric, pgEnum, serial } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, numeric, pgEnum, serial, integer, boolean } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
@@ -24,6 +24,15 @@ export const disputeStatusEnum = pgEnum('dispute_status', [
   'cancelled'
 ]);
 
+export const notificationTypeEnum = pgEnum('notification_type', [
+  'transaction_created',
+  'transaction_locked',
+  'transaction_released',
+  'transaction_disputed',
+  'transaction_refunded',
+  'dispute_resolved'
+]);
+
 export const escrowTransactions = pgTable('escrow_transactions', {
   id: serial('id').primaryKey(),
   sellerId: serial('seller_id').references(() => users.id),
@@ -43,5 +52,17 @@ export const escrowTransactions = pgTable('escrow_transactions', {
   updatedAt: timestamp('updated_at').defaultNow()
 });
 
+export const notifications = pgTable('notifications', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  type: notificationTypeEnum('type').notNull(),
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  transactionId: integer('transaction_id').references(() => escrowTransactions.id),
+  read: boolean('read').default(false),
+  createdAt: timestamp('created_at').defaultNow()
+});
+
 export type User = typeof users.$inferSelect;
 export type EscrowTransaction = typeof escrowTransactions.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;

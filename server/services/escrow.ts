@@ -3,6 +3,7 @@ import { users, escrowTransactions, type EscrowTransaction } from '../db/schema'
 import { eq, and, lt, sql } from 'drizzle-orm';
 import { piHelper } from '../lib/pi-helper';
 import { Decimal } from 'decimal.js';
+import { notificationService } from './notifications';
 
 export interface CreateEscrowParams {
   sellerId: number;
@@ -39,6 +40,24 @@ export class EscrowService {
       autoReleaseAt: new Date(Date.now() + this.RELEASE_TIMEOUT)
     }).returning();
 
+    // Create notifications for both buyer and seller
+    await Promise.all([
+      notificationService.createNotification({
+        userId: sellerId,
+        type: 'transaction_created',
+        title: 'New Transaction',
+        message: `New escrow transaction created for ${amount} Pi`,
+        transactionId: transaction.id
+      }),
+      notificationService.createNotification({
+        userId: buyerId,
+        type: 'transaction_created',
+        title: 'New Transaction',
+        message: `New escrow transaction created for ${amount} Pi`,
+        transactionId: transaction.id
+      })
+    ]);
+
     return transaction;
   }
 
@@ -62,28 +81,51 @@ export class EscrowService {
       throw new Error('Transaction not found or already processed');
     }
 
+    // Create notifications for status change
+    await Promise.all([
+      notificationService.createNotification({
+        userId: transaction.sellerId,
+        type: 'transaction_locked',
+        title: 'Funds Locked',
+        message: `Funds have been locked in escrow for transaction #${transaction.id}`,
+        transactionId: transaction.id
+      }),
+      notificationService.createNotification({
+        userId: transaction.buyerId,
+        type: 'transaction_locked',
+        title: 'Funds Locked',
+        message: `Funds have been locked in escrow for transaction #${transaction.id}`,
+        transactionId: transaction.id
+      })
+    ]);
+
     return transaction;
   }
 
   async releaseFunds(transactionId: number, userId: number): Promise<EscrowTransaction> {
-    // Verify user is the seller
-    const [transaction] = await db
-      .select()
-      .from(escrowTransactions)
-      .where(
-        and(
-          eq(escrowTransactions.id, transactionId),
-          eq(escrowTransactions.sellerId, userId),
-          eq(escrowTransactions.status, 'locked')
-        )
-      )
-      .limit(1);
+    const transaction = await this.processRelease(
+      await this.getVerifiedTransaction(transactionId, userId)
+    );
 
-    if (!transaction) {
-      throw new Error('Transaction not found or unauthorized');
-    }
+    // Create notifications for fund release
+    await Promise.all([
+      notificationService.createNotification({
+        userId: transaction.sellerId,
+        type: 'transaction_released',
+        title: 'Funds Released',
+        message: `Funds have been released for transaction #${transaction.id}`,
+        transactionId: transaction.id
+      }),
+      notificationService.createNotification({
+        userId: transaction.buyerId,
+        type: 'transaction_released',
+        title: 'Funds Released',
+        message: `Funds have been released for transaction #${transaction.id}`,
+        transactionId: transaction.id
+      })
+    ]);
 
-    return await this.processRelease(transaction);
+    return transaction;
   }
 
   private async processRelease(transaction: EscrowTransaction): Promise<EscrowTransaction> {
@@ -105,6 +147,27 @@ export class EscrowService {
       .returning();
 
     return updatedTransaction;
+  }
+
+  private async getVerifiedTransaction(transactionId: number, userId: number): Promise<EscrowTransaction> {
+    // Verify user is the seller
+    const [transaction] = await db
+      .select()
+      .from(escrowTransactions)
+      .where(
+        and(
+          eq(escrowTransactions.id, transactionId),
+          eq(escrowTransactions.sellerId, userId),
+          eq(escrowTransactions.status, 'locked')
+        )
+      )
+      .limit(1);
+
+    if (!transaction) {
+      throw new Error('Transaction not found or unauthorized');
+    }
+
+    return transaction;
   }
 
   async checkAndProcessAutoReleases(): Promise<void> {
@@ -173,6 +236,24 @@ export class EscrowService {
       .where(eq(escrowTransactions.id, transactionId))
       .returning();
 
+    // Create notifications for dispute initiation
+    await Promise.all([
+      notificationService.createNotification({
+        userId: transaction.sellerId,
+        type: 'transaction_disputed',
+        title: 'Dispute Initiated',
+        message: `A dispute has been initiated for transaction #${transaction.id}`,
+        transactionId: transaction.id
+      }),
+      notificationService.createNotification({
+        userId: transaction.buyerId,
+        type: 'transaction_disputed',
+        title: 'Dispute Initiated',
+        message: `A dispute has been initiated for transaction #${transaction.id}`,
+        transactionId: transaction.id
+      })
+    ]);
+
     return updatedTransaction;
   }
 
@@ -221,6 +302,24 @@ export class EscrowService {
           .where(eq(escrowTransactions.id, transactionId))
           .returning();
 
+        // Create notification for dispute resolution - refund
+        await Promise.all([
+          notificationService.createNotification({
+            userId: transaction.sellerId,
+            type: 'transaction_refunded',
+            title: 'Dispute Resolved',
+            message: `Dispute for transaction #${transaction.id} has been resolved with a refund.`,
+            transactionId: transaction.id
+          }),
+          notificationService.createNotification({
+            userId: transaction.buyerId,
+            type: 'transaction_refunded',
+            title: 'Dispute Resolved',
+            message: `Dispute for transaction #${transaction.id} has been resolved with a refund.`,
+            transactionId: transaction.id
+          })
+        ]);
+
         return updatedTransaction;
       } else {
         // Release funds to seller
@@ -239,6 +338,24 @@ export class EscrowService {
           })
           .where(eq(escrowTransactions.id, transactionId))
           .returning();
+
+        // Create notification for dispute resolution - release
+        await Promise.all([
+          notificationService.createNotification({
+            userId: transaction.sellerId,
+            type: 'transaction_released',
+            title: 'Dispute Resolved',
+            message: `Dispute for transaction #${transaction.id} has been resolved and funds have been released.`,
+            transactionId: transaction.id
+          }),
+          notificationService.createNotification({
+            userId: transaction.buyerId,
+            type: 'transaction_released',
+            title: 'Dispute Resolved',
+            message: `Dispute for transaction #${transaction.id} has been resolved and funds have been released.`,
+            transactionId: transaction.id
+          })
+        ]);
 
         return updatedTransaction;
       }
