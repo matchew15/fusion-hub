@@ -7,6 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import type { Listing } from "db/schema";
 import 'leaflet/dist/leaflet.css';
 
+// Get API key from environment
+const OPENCAGE_API_KEY = import.meta.env.VITE_OPENCAGE_API_KEY;
+console.log('OpenCage API Key Status:', OPENCAGE_API_KEY ? 'Available' : 'Missing');
+
 // Define icon URLs using CDN
 const MARKER_ICON_URL = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png';
 const MARKER_SHADOW_URL = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png';
@@ -40,14 +44,15 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const mapRef = useRef<Map | null>(null);
 
   const geocodeLocation = async (location: string) => {
-    if (!location) {
-      console.log('Geocoding skipped: No location provided');
+    const apiKey = OPENCAGE_API_KEY;
+    if (!location || !apiKey) {
+      console.log('Geocoding skipped:', !location ? 'No location provided' : 'No API key available');
       return null;
     }
 
     try {
       const response = await fetch(
-        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${import.meta.env.VITE_OPENCAGE_API_KEY}&limit=1`
+        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${apiKey}&limit=1`
       );
       
       if (!response.ok) {
@@ -74,8 +79,10 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
         return;
       }
 
-      if (!import.meta.env.VITE_OPENCAGE_API_KEY) {
-        setError('Map service configuration error');
+      const apiKey = OPENCAGE_API_KEY;
+      if (!apiKey) {
+        console.error('OpenCage API key not found in environment');
+        setError('Map Service Configuration Error');
         setIsLoading(false);
         return;
       }
@@ -120,7 +127,8 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     const [isSearching, setIsSearching] = useState(false);
 
     const handleSearch = async (query: string) => {
-      if (!query || !import.meta.env.VITE_OPENCAGE_API_KEY) {
+      const apiKey = OPENCAGE_API_KEY;
+      if (!query || !apiKey) {
         setSuggestions([]);
         return;
       }
@@ -128,7 +136,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
       setIsSearching(true);
       try {
         const response = await fetch(
-          `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${import.meta.env.VITE_OPENCAGE_API_KEY}&limit=5`
+          `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${apiKey}&limit=5`
         );
         const data = await response.json();
 
@@ -195,12 +203,13 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) => void }) => {
     const map = useMapEvents({
       click: async (e) => {
-        if (!import.meta.env.VITE_OPENCAGE_API_KEY) return;
+        const apiKey = OPENCAGE_API_KEY;
+        if (!apiKey) return;
         
         const { lat, lng } = e.latlng;
         try {
           const response = await fetch(
-            `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${import.meta.env.VITE_OPENCAGE_API_KEY}&limit=1`
+            `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${apiKey}&limit=1`
           );
           const data = await response.json();
           
@@ -225,7 +234,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     }
   }, []);
 
-  if (!import.meta.env.VITE_OPENCAGE_API_KEY) {
+  if (!OPENCAGE_API_KEY) {
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
         <div className="text-destructive space-y-2 text-center p-4">
@@ -269,8 +278,8 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
-          whenReady={(map) => {
-            mapRef.current = map.target;
+          whenReady={(event) => {
+            mapRef.current = event.target;
           }}
         >
           <TileLayer
