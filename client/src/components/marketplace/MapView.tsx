@@ -1,22 +1,19 @@
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
+import { Icon } from 'leaflet';
 import type { Listing } from 'db/schema';
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-// Define marker icon type
-type MarkerIcon = {
-  iconUrl: string;
-  iconRetinaUrl: string;
-  shadowUrl: string;
-  iconSize: [number, number];
-  iconAnchor: [number, number];
-  popupAnchor: [number, number];
-  shadowSize: [number, number];
-};
+// Define the icon once at the component level
+const defaultIcon = new Icon({
+  iconUrl: '/node_modules/leaflet/dist/images/marker-icon.png',
+  shadowUrl: '/node_modules/leaflet/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41]
+});
 
 interface MapViewProps {
   listings: Listing[];
@@ -27,31 +24,31 @@ interface GeocodedListing extends Listing {
   coordinates?: [number, number];
 }
 
-// Geocoding function with improved error handling
 const geocodeLocation = async (location: string) => {
   if (!location) return null;
   
+  const apiKey = process.env.NEXT_PUBLIC_OPENCAGE_API_KEY;
+  if (!apiKey) {
+    console.error('OpenCage API key is missing');
+    return null;
+  }
+
   try {
-    console.log('Geocoding location:', location);
     const response = await fetch(
-      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${process.env.NEXT_PUBLIC_OPENCAGE_API_KEY}&limit=1`
+      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${apiKey}&limit=1`
     );
     
-    if (!response.ok) {
-      throw new Error(`Geocoding failed: ${response.statusText}`);
+    const data = await response.json();
+    
+    if (data.status?.code !== 200) {
+      throw new Error(`Geocoding failed: ${data.status?.message}`);
     }
 
-    const data = await response.json();
-    console.log('Geocoding response:', data);
-    
     if (data.results && data.results.length > 0) {
       const { lat, lng } = data.results[0].geometry;
-      const coords = [Number(lat), Number(lng)] as [number, number];
-      console.log('Coordinates found:', coords);
-      return coords;
+      return [Number(lat), Number(lng)] as [number, number];
     }
     
-    console.log('No coordinates found for location:', location);
     return null;
   } catch (error) {
     console.error('Geocoding error:', error);
@@ -104,7 +101,7 @@ const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (va
         <Input
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Enter location..."
+          placeholder="Search location..."
           className="cyber-panel neon-focus pl-10"
         />
       </div>
@@ -157,28 +154,15 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const mapRef = useRef<L.Map>(null);
 
-  // Initialize geocoding service
-  useEffect(() => {
-    const initGeocoding = async () => {
-      if (!process.env.NEXT_PUBLIC_OPENCAGE_API_KEY) {
-        console.error('OpenCage API key is missing');
-        return;
-      }
-      
-      // Test geocoding service
-      const testCoords = await geocodeLocation('New York');
-      console.log('Geocoding service test:', testCoords);
-    };
-
-    initGeocoding();
-  }, []);
-
-  // Handle map center updates
-  useEffect(() => {
-    if (mapRef.current && mapCenter) {
-      mapRef.current.setView(mapCenter, mapZoom);
-    }
-  }, [mapCenter, mapZoom]);
+  if (!process.env.NEXT_PUBLIC_OPENCAGE_API_KEY) {
+    return (
+      <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
+        <div className="text-destructive">
+          Error: OpenCage API key is missing
+        </div>
+      </div>
+    );
+  }
 
   const handleLocationSelect = useCallback(async (location: string) => {
     setSearchQuery(location);
@@ -189,7 +173,6 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     }
   }, []);
 
-  // Geocode listings
   useEffect(() => {
     const geocodeListings = async () => {
       if (!listings.length) return;
@@ -218,13 +201,15 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           })
         );
 
-        const validListings = geocoded.filter(listing => listing.coordinates);
+        const validListings = geocoded.filter((listing): listing is GeocodedListing & { coordinates: [number, number] } => 
+          !!listing.coordinates
+        );
+        
         console.log('Valid geocoded listings:', validListings.length);
         setGeocodedListings(geocoded);
         
         if (validListings.length > 0) {
-          const firstValid = validListings[0] as GeocodedListing & { coordinates: [number, number] };
-          setMapCenter(firstValid.coordinates);
+          setMapCenter(validListings[0].coordinates);
           setMapZoom(13);
         }
       } catch (error) {
@@ -248,30 +233,18 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     );
   }
 
-  // Create marker icon
-  const defaultIcon = L.icon({
-    iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-    iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-  });
-
   return (
     <div className="space-y-4">
       <LocationSearchInput value={searchQuery} onChange={handleLocationSelect} />
 
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel">
         <MapContainer
+          key={`${mapCenter[0]}-${mapCenter[1]}-${mapZoom}`}
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
-          whenReady={(map) => {
-            if (mapRef.current !== map.target) {
-              mapRef.current = map.target;
-            }
+          whenCreated={(map) => {
+            mapRef.current = map;
           }}
         >
           <TileLayer
@@ -280,12 +253,8 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           />
           <MapEvents onLocationSelect={handleLocationSelect} />
           {geocodedListings.map((listing) => {
-            if (!listing.coordinates) {
-              console.log('Skipping marker for listing without coordinates:', listing.id);
-              return null;
-            }
+            if (!listing.coordinates) return null;
             
-            console.log('Adding marker for listing:', listing.id, listing.coordinates);
             return (
               <Marker
                 key={listing.id}
@@ -298,8 +267,12 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
                 <Popup>
                   <div className="space-y-2">
                     <h3 className="font-bold">{listing.title}</h3>
-                    <p className="text-sm">{listing.location}</p>
+                    <Badge variant={listing.type === "Request" ? "secondary" : "default"}>
+                      {listing.type}
+                    </Badge>
+                    <p className="text-sm text-muted-foreground">{listing.description}</p>
                     <p className="font-bold text-primary">{listing.price} π</p>
+                    <p className="text-sm">{listing.location}</p>
                   </div>
                 </Popup>
               </Marker>
