@@ -4,7 +4,9 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import type { Listing } from 'db/schema';
 import { Badge } from "@/components/ui/badge";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 // Fix for default marker icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -23,11 +25,22 @@ interface GeocodedListing extends Listing {
   coordinates?: [number, number];
 }
 
+interface SearchResult {
+  formatted: string;
+  geometry: {
+    lat: number;
+    lng: number;
+  };
+}
+
 export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [geocodedListings, setGeocodedListings] = useState<GeocodedListing[]>([]);
   const [mapCenter, setMapCenter] = useState<[number, number]>([20, 0]); // Default to a more central position
   const [mapZoom, setMapZoom] = useState(2);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
 
   useEffect(() => {
     // Load the map tiles after component mounts
@@ -37,8 +50,44 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     }
   }, []);
 
+  const handleLocationSearch = async (query: string) => {
+    if (!query) {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+    
+    try {
+      const response = await fetch(
+        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${process.env.NEXT_PUBLIC_OPENCAGE_API_KEY}&limit=5`
+      );
+      const data = await response.json();
+      
+      if (data.results) {
+        const results = data.results.map((result: any) => ({
+          formatted: result.formatted,
+          geometry: result.geometry
+        }));
+        setSearchResults(results);
+        setShowSearchResults(true);
+      }
+    } catch (error) {
+      console.error('Location search failed:', error);
+      setSearchResults([]);
+      setShowSearchResults(false);
+    }
+  };
+
+  const handleLocationSelect = (result: SearchResult) => {
+    setMapCenter([result.geometry.lat, result.geometry.lng]);
+    setMapZoom(13);
+    setSearchQuery(result.formatted);
+    setShowSearchResults(false);
+  };
+
   useEffect(() => {
     const geocodeListings = async () => {
+      console.log('Starting geocoding for', listings.length, 'listings');
       setIsLoading(true);
       
       const geocoded = await Promise.all(
@@ -47,14 +96,14 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           
           try {
             const response = await fetch(
-              `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(listing.location)}&key=${process.env.NEXT_PUBLIC_OPENCAGE_API_KEY}`
+              `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(listing.location)}&key=${process.env.NEXT_PUBLIC_OPENCAGE_API_KEY}&limit=1`
             );
-            const data = await response.json();
-
-            if (data.status?.code === 403) {
-              console.error('API Key error:', data.status.message);
-              return { ...listing };
+            
+            if (!response.ok) {
+              throw new Error(`Geocoding failed: ${response.statusText}`);
             }
+
+            const data = await response.json();
             
             if (data.results && data.results.length > 0) {
               const { lat, lng } = data.results[0].geometry;
@@ -63,41 +112,25 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
                 coordinates: [lat, lng] as [number, number],
               };
             }
+            
+            console.warn(`No coordinates found for location: ${listing.location}`);
+            return { ...listing };
           } catch (error) {
-            console.error('Geocoding error:', error);
+            console.error(`Geocoding error for ${listing.location}:`, error);
+            return { ...listing };
           }
-          
-          return listing;
         })
       );
 
+      const validListings = geocoded.filter((listing): listing is GeocodedListing & { coordinates: [number, number] } => 
+        !!listing.coordinates
+      );
       setGeocodedListings(geocoded);
-
-      // Calculate map center and zoom based on listings
-      const validCoordinates = geocoded
-        .filter((listing): listing is GeocodedListing & { coordinates: [number, number] } => 
-          !!listing.coordinates
-        )
-        .map(listing => listing.coordinates);
-
-      if (validCoordinates.length > 0) {
-        // Calculate the center
-        const center: [number, number] = [
-          validCoordinates.reduce((sum, [lat]) => sum + lat, 0) / validCoordinates.length,
-          validCoordinates.reduce((sum, [, lng]) => sum + lng, 0) / validCoordinates.length,
-        ];
-        setMapCenter(center);
-
-        // Calculate appropriate zoom level
-        if (validCoordinates.length === 1) {
-          setMapZoom(13); // Close zoom for single location
-        } else {
-          const bounds = L.latLngBounds(validCoordinates);
-          const map = L.map(document.createElement('div'));
-          map.fitBounds(bounds);
-          setMapZoom(map.getZoom() || 2);
-          map.remove();
-        }
+      
+      if (validListings.length > 0) {
+        // Update map center to first valid listing
+        setMapCenter(validListings[0].coordinates || [20, 0]);
+        setMapZoom(validListings.length === 1 ? 13 : 2);
       }
       
       setIsLoading(false);
@@ -118,41 +151,71 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   }
 
   return (
-    <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel">
-      <MapContainer
-        id="map"
-        center={mapCenter}
-        zoom={mapZoom}
-        className="h-full w-full"
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+    <div className="space-y-4">
+      <div className="relative">
+        <Input
+          value={searchQuery}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            handleLocationSearch(e.target.value);
+          }}
+          placeholder="Search for a location..."
+          className="cyber-panel neon-focus pr-10"
         />
-        {geocodedListings.map((listing) => (
-          listing.coordinates && (
-            <Marker
-              key={listing.id}
-              position={listing.coordinates}
-              eventHandlers={{
-                click: () => onListingClick?.(listing),
-              }}
-            >
-              <Popup>
-                <div className="space-y-2">
-                  <h3 className="font-bold">{listing.title}</h3>
-                  <Badge variant={listing.type === "Request" ? "secondary" : "default"}>
-                    {listing.type}
-                  </Badge>
-                  <p className="text-sm text-muted-foreground">{listing.description}</p>
-                  <p className="font-bold text-primary">{listing.price} π</p>
-                  <p className="text-sm">{listing.location}</p>
-                </div>
-              </Popup>
-            </Marker>
-          )
-        ))}
-      </MapContainer>
+        <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+        
+        {showSearchResults && searchResults.length > 0 && (
+          <div className="absolute z-50 mt-1 w-full rounded-lg bg-background border border-primary/30 shadow-lg">
+            {searchResults.map((result, index) => (
+              <Button
+                key={index}
+                variant="ghost"
+                className="w-full justify-start px-4 py-2 text-left hover:bg-primary/10"
+                onClick={() => handleLocationSelect(result)}
+              >
+                {result.formatted}
+              </Button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel">
+        <MapContainer
+          id="map"
+          center={mapCenter}
+          zoom={mapZoom}
+          className="h-full w-full"
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          {geocodedListings.map((listing) => (
+            listing.coordinates && (
+              <Marker
+                key={listing.id}
+                position={listing.coordinates}
+                eventHandlers={{
+                  click: () => onListingClick?.(listing),
+                }}
+              >
+                <Popup>
+                  <div className="space-y-2">
+                    <h3 className="font-bold">{listing.title}</h3>
+                    <Badge variant={listing.type === "Request" ? "secondary" : "default"}>
+                      {listing.type}
+                    </Badge>
+                    <p className="text-sm text-muted-foreground">{listing.description}</p>
+                    <p className="font-bold text-primary">{listing.price} π</p>
+                    <p className="text-sm">{listing.location}</p>
+                  </div>
+                </Popup>
+              </Marker>
+            )
+          ))}
+        </MapContainer>
+      </div>
     </div>
   );
 }
