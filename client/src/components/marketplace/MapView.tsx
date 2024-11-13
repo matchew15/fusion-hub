@@ -1,7 +1,11 @@
 /// <reference types="vite/client" />
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
-import { Icon } from 'leaflet';
+import { Icon, Map } from 'leaflet';
+import { Loader2, Search, MapPin } from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import type { Listing } from "db/schema";
 import 'leaflet/dist/leaflet.css';
 
 // Get API key from environment properly
