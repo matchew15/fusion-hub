@@ -53,8 +53,9 @@ export function registerRoutes(app: Express) {
             : [];
             
         if (hashtagArray.length > 0) {
+          // Cast the array to text[] and use overlap operator
           conditions.push(
-            sql`${listings.hashtags} && ${sql.array(hashtagArray)}`
+            sql`${listings.hashtags} && ${sql.array(hashtagArray, 'text')}::text[]`
           );
         }
       }
