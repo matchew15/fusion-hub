@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import 'leaflet/dist/leaflet.css';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
@@ -15,8 +16,7 @@ const defaultIcon = new Icon({
   iconAnchor: [12, 41]
 });
 
-const OPENCAGE_API_KEY = process.env.OPENCAGE_API_KEY || import.meta.env.VITE_OPENCAGE_API_KEY;
-console.log('API Key status:', OPENCAGE_API_KEY ? 'Available' : 'Missing');
+const OPENCAGE_API_KEY = import.meta.env.VITE_OPENCAGE_API_KEY;
 
 interface MapViewProps {
   listings: Listing[];
@@ -28,7 +28,8 @@ interface GeocodedListing extends Listing {
 }
 
 const geocodeLocation = async (location: string) => {
-  if (!location || !OPENCAGE_API_KEY) {
+  const apiKey = import.meta.env.VITE_OPENCAGE_API_KEY;
+  if (!location || !apiKey) {
     console.log('Geocoding skipped:', !location ? 'No location provided' : 'No API key available');
     return null;
   }
@@ -36,7 +37,7 @@ const geocodeLocation = async (location: string) => {
   try {
     console.log('Geocoding location:', location);
     const response = await fetch(
-      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${OPENCAGE_API_KEY}&limit=1`
+      `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${apiKey}&limit=1`
     );
     
     if (!response.ok) {
@@ -66,14 +67,15 @@ const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (va
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   const handleSearch = async (query: string) => {
-    if (!query || !OPENCAGE_API_KEY) {
+    const apiKey = import.meta.env.VITE_OPENCAGE_API_KEY;
+    if (!query || !apiKey) {
       setSuggestions([]);
       return;
     }
 
     try {
       const response = await fetch(
-        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${OPENCAGE_API_KEY}&limit=5`
+        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${apiKey}&limit=5`
       );
       const data = await response.json();
 
@@ -133,12 +135,13 @@ const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (va
 const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) => void }) => {
   const map = useMapEvents({
     click: async (e) => {
-      if (!OPENCAGE_API_KEY) return;
+      const apiKey = import.meta.env.VITE_OPENCAGE_API_KEY;
+      if (!apiKey) return;
       
       const { lat, lng } = e.latlng;
       try {
         const response = await fetch(
-          `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${OPENCAGE_API_KEY}&limit=1`
+          `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${apiKey}&limit=1`
         );
         const data = await response.json();
         
@@ -161,7 +164,8 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const mapRef = useRef<L.Map>(null);
 
-  if (!OPENCAGE_API_KEY) {
+  if (!import.meta.env.VITE_OPENCAGE_API_KEY) {
+    console.error('OpenCage API key is missing');
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
         <div className="text-destructive space-y-2">
