@@ -42,29 +42,18 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [map, setMap] = useState<Map | null>(null);
   const mapRef = useRef<Map | null>(null);
 
-  // Check for API key first
-  useEffect(() => {
-    if (!import.meta.env.VITE_MAPBOX_API_KEY) {
-      console.error('Mapbox API key not found');
-      setError('Map Service Configuration Error');
-      setIsLoading(false);
-      return;
-    }
-
-    // Initialize map with default view
-    setMapCenter([20, 0]);
-    setMapZoom(2);
-    setIsLoading(false);
-  }, []);
-
   const geocodeLocation = async (location: string) => {
-    if (!location || !import.meta.env.VITE_MAPBOX_API_KEY) return null;
+    if (!location) return null;
 
     try {
       const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(location)}.json?access_token=${import.meta.env.VITE_MAPBOX_API_KEY}&limit=1`;
       const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error('Geocoding request failed');
+      }
+      
       const data = await response.json();
-
       if (data.features && data.features.length > 0) {
         const [lng, lat] = data.features[0].center;
         return [lat, lng] as [number, number];
@@ -87,23 +76,30 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
       setError(null);
 
       try {
-        const geocoded = await Promise.all(
-          listings.map(async (listing) => {
-            if (!listing.location) return { ...listing };
-            
+        const geocodingPromises = listings.map(async (listing) => {
+          if (!listing.location) return { ...listing };
+          
+          try {
             const coordinates = await geocodeLocation(listing.location);
-            return coordinates ? { ...listing, coordinates } : { ...listing };
-          })
-        );
+            return { ...listing, coordinates };
+          } catch (err) {
+            console.error(`Failed to geocode listing ${listing.id}:`, err);
+            return { ...listing };
+          }
+        });
 
-        setGeocodedListings(geocoded);
-        
+        const geocoded = await Promise.allSettled(geocodingPromises);
+        const validListings = geocoded
+          .filter((result): result is PromiseFulfilledResult<GeocodedListing> => 
+            result.status === 'fulfilled'
+          )
+          .map(result => result.value);
+
+        setGeocodedListings(validListings);
+
         // Find first valid listing with coordinates to center map
-        const validListing = geocoded.find((listing): listing is GeocodedListing & { coordinates: [number, number] } => 
-          'coordinates' in listing && !!listing.coordinates
-        );
-        
-        if (validListing) {
+        const validListing = validListings.find(listing => listing.coordinates);
+        if (validListing?.coordinates) {
           setMapCenter(validListing.coordinates);
           setMapZoom(13);
           if (map) {
@@ -111,7 +107,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           }
         }
       } catch (error) {
-        console.error('Failed to geocode listings:', error);
+        console.error('Failed to process listings:', error);
         setError('Failed to load location data');
       } finally {
         setIsLoading(false);
@@ -120,6 +116,9 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
 
     if (import.meta.env.VITE_MAPBOX_API_KEY) {
       geocodeListings();
+    } else {
+      setError('Map Service Configuration Error');
+      setIsLoading(false);
     }
   }, [listings, map]);
 
@@ -159,8 +158,12 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
         const response = await fetch(
           `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${import.meta.env.VITE_MAPBOX_API_KEY}&limit=5`
         );
+        
+        if (!response.ok) {
+          throw new Error('Location search failed');
+        }
+        
         const data = await response.json();
-
         if (data.features) {
           setSuggestions(
             data.features.map((feature: any) => ({
@@ -236,8 +239,12 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           const response = await fetch(
             `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${import.meta.env.VITE_MAPBOX_API_KEY}&limit=1`
           );
-          const data = await response.json();
           
+          if (!response.ok) {
+            throw new Error('Reverse geocoding failed');
+          }
+          
+          const data = await response.json();
           if (data.features && data.features.length > 0) {
             onLocationSelect(data.features[0].place_name);
           }
@@ -264,8 +271,8 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
         <div className="text-destructive space-y-2 text-center p-4">
-          <p className="font-bold">Map Service Error</p>
-          <p className="text-sm text-muted-foreground">{error}</p>
+          <p className="font-bold">{error}</p>
+          <p className="text-sm text-muted-foreground">Unable to initialize map service. Please check configuration.</p>
         </div>
       </div>
     );
@@ -280,10 +287,10 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
-          whenReady={(map) => {
+          whenReady={(e) => {
             console.log('Map initialized');
-            setMap(map.target);
-            mapRef.current = map.target;
+            setMap(e.target);
+            mapRef.current = e.target;
           }}
           style={{ height: '600px', width: '100%' }}
         >
@@ -295,6 +302,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           <MapEvents onLocationSelect={handleLocationSelect} />
           {geocodedListings.map((listing) => {
             if (!listing.coordinates) {
+              console.debug('Skipping marker for listing without coordinates:', listing.id);
               return null;
             }
 
@@ -305,9 +313,6 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
                 icon={getMarkerIcon(listing.type)}
                 eventHandlers={{
                   click: () => {
-                    if (map) {
-                      map.setView(listing.coordinates!, 13);
-                    }
                     onListingClick?.(listing);
                   },
                 }}
@@ -320,15 +325,6 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
                     </Badge>
                     <p className="text-sm text-muted-foreground">{listing.description}</p>
                     <p className="font-bold text-primary">{listing.price} π</p>
-                    {listing.hashtags && listing.hashtags.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {listing.hashtags.map((tag, i) => (
-                          <Badge key={i} variant="outline" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
                     <p className="text-sm flex items-center gap-1">
                       <MapPin className="h-4 w-4" />
                       {listing.location}
