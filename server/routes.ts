@@ -37,7 +37,7 @@ export function registerRoutes(app: Express) {
         );
       }
 
-      if (type) {
+      if (type && type !== 'all') {
         conditions.push(eq(listings.type, type as string));
       }
 
@@ -53,9 +53,8 @@ export function registerRoutes(app: Express) {
             : [];
             
         if (hashtagArray.length > 0) {
-          // Cast the array to text[] and use overlap operator
           conditions.push(
-            sql`${listings.hashtags} && ${sql.array(hashtagArray, 'text')}::text[]`
+            sql`${listings.hashtags} ?& ${sql.array(hashtagArray, 'text')}` // Using ?& operator for contains all
           );
         }
       }
@@ -96,7 +95,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
-  // New DELETE endpoint for listings
+  // Delete endpoint for listings
   app.delete("/api/listings/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });

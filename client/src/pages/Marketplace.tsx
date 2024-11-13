@@ -150,7 +150,11 @@ export default function Marketplace() {
         </div>
       )}
 
-      {listings ? (
+      {listings === undefined ? (
+        <div className="text-center text-muted-foreground">Loading...</div>
+      ) : listings.length === 0 ? (
+        <div className="text-center text-muted-foreground">No listings found</div>
+      ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {listings.map((listing) => (
             <ProductCard 
@@ -160,8 +164,6 @@ export default function Marketplace() {
             />
           ))}
         </div>
-      ) : (
-        <div className="text-center text-muted-foreground">Loading...</div>
       )}
     </div>
   );
