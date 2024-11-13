@@ -31,14 +31,18 @@ interface GeocodedListing extends Listing {
 }
 
 const geocodeLocation = async (location: string) => {
+  if (!location) {
+    console.log('Geocoding skipped: No location provided');
+    return null;
+  }
+
   const apiKey = import.meta.env.VITE_OPENCAGE_API_KEY;
-  if (!location || !apiKey) {
-    console.log('Geocoding skipped:', !location ? 'No location provided' : 'No API key available');
+  if (!apiKey) {
+    console.log('Geocoding skipped: API key not available');
     return null;
   }
 
   try {
-    console.log('Geocoding location:', location);
     const response = await fetch(
       `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(location)}&key=${apiKey}&limit=1`
     );
@@ -48,16 +52,11 @@ const geocodeLocation = async (location: string) => {
     }
 
     const data = await response.json();
-    console.log('Geocoding response:', data.status?.message || 'Success');
     
     if (data.results && data.results.length > 0) {
       const { lat, lng } = data.results[0].geometry;
-      const coords = [Number(lat), Number(lng)] as [number, number];
-      console.log('Coordinates found:', coords);
-      return coords;
+      return [Number(lat), Number(lng)] as [number, number];
     }
-    
-    console.log('No coordinates found for location:', location);
     return null;
   } catch (error) {
     console.error('Geocoding error:', error);
@@ -68,11 +67,16 @@ const geocodeLocation = async (location: string) => {
 const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (value: string) => void }) => {
   const [suggestions, setSuggestions] = useState<Array<{ place_name: string; center: [number, number] }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const apiKey = import.meta.env.VITE_OPENCAGE_API_KEY;
 
   const handleSearch = async (query: string) => {
-    if (!query || !apiKey) {
+    if (!query) {
       setSuggestions([]);
+      return;
+    }
+
+    const apiKey = import.meta.env.VITE_OPENCAGE_API_KEY;
+    if (!apiKey) {
+      console.log('Location search skipped: API key not available');
       return;
     }
 
@@ -98,7 +102,7 @@ const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (va
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      handleSearch(value);
+      if (value) handleSearch(value);
     }, 300);
 
     return () => clearTimeout(timer);
@@ -161,7 +165,6 @@ const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) 
 };
 
 export default function MapView({ listings, onListingClick }: MapViewProps) {
-  const OPENCAGE_API_KEY = import.meta.env.VITE_OPENCAGE_API_KEY;
   const [geocodedListings, setGeocodedListings] = useState<GeocodedListing[]>([]);
   const [mapCenter, setMapCenter] = useState<[number, number]>([20, 0]);
   const [mapZoom, setMapZoom] = useState(2);
@@ -170,17 +173,15 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const mapRef = useRef<Map | null>(null);
 
-  // Add API key check effect
-  useEffect(() => {
-    if (!OPENCAGE_API_KEY) {
-      console.error('OpenCage API key not found. Please check environment configuration.');
-      setError('Geocoding service configuration is missing');
-    }
-  }, [OPENCAGE_API_KEY]);
-
   useEffect(() => {
     const geocodeListings = async () => {
       if (!listings.length) {
+        setIsLoading(false);
+        return;
+      }
+
+      if (!import.meta.env.VITE_OPENCAGE_API_KEY) {
+        setError('Map Service Unavailable');
         setIsLoading(false);
         return;
       }
@@ -216,10 +217,8 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
       }
     };
 
-    if (OPENCAGE_API_KEY) {
-      geocodeListings();
-    }
-  }, [listings, OPENCAGE_API_KEY]);
+    geocodeListings();
+  }, [listings]);
 
   const handleLocationSelect = useCallback(async (location: string) => {
     setSearchQuery(location);
@@ -245,9 +244,9 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
         <div className="text-destructive space-y-2 text-center p-4">
-          <p className="font-bold">Error: {error}</p>
+          <p className="font-bold">Map Service Unavailable</p>
           <p className="text-sm text-muted-foreground">
-            The map functionality is currently unavailable. Please try again later.
+            Unable to load map data. Please try again later.
           </p>
         </div>
       </div>
@@ -260,13 +259,11 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
 
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel">
         <MapContainer
-          key={`${mapCenter[0]}-${mapCenter[1]}-${mapZoom}`}
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
           whenCreated={(map) => {
             mapRef.current = map;
-            console.log('Map initialized successfully');
           }}
         >
           <TileLayer
@@ -275,12 +272,8 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           />
           <MapEvents onLocationSelect={handleLocationSelect} />
           {geocodedListings.map((listing) => {
-            if (!listing.coordinates) {
-              console.log('Skipping marker for listing without coordinates:', listing.id);
-              return null;
-            }
+            if (!listing.coordinates) return null;
             
-            console.log('Rendering marker for listing:', listing.id, listing.coordinates);
             return (
               <Marker
                 key={listing.id}
