@@ -2,7 +2,7 @@ import { Express } from "express";
 import { setupAuth } from "./auth";
 import { db } from "../db";
 import { listings, transactions, chats, users } from "../db/schema";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and, or, ilike, inArray } from "drizzle-orm";
 
 export function registerRoutes(app: Express) {
   setupAuth(app);
@@ -19,10 +19,55 @@ export function registerRoutes(app: Express) {
     res.status(401).json({ message: "Unauthorized" });
   });
 
-  // Listings routes
+  // Enhanced listings route with filters
   app.get("/api/listings", async (req, res) => {
-    const allListings = await db.select().from(listings).where(eq(listings.active, true));
-    res.json(allListings);
+    try {
+      const { search, type, location, hashtags } = req.query;
+      let query = db.select().from(listings).where(eq(listings.active, true));
+
+      // Apply filters if provided
+      const conditions = [];
+
+      if (search) {
+        conditions.push(
+          or(
+            ilike(listings.title, `%${search}%`),
+            ilike(listings.description, `%${search}%`)
+          )
+        );
+      }
+
+      if (type) {
+        conditions.push(eq(listings.type, type as string));
+      }
+
+      if (location) {
+        conditions.push(ilike(listings.location, `%${location}%`));
+      }
+
+      if (hashtags) {
+        // Handle array of hashtags
+        const hashtagArray = Array.isArray(hashtags) 
+          ? hashtags 
+          : (hashtags as string).split(',');
+        conditions.push(
+          inArray(listings.hashtags, hashtagArray as string[])
+        );
+      }
+
+      if (conditions.length > 0) {
+        query = query.where(and(...conditions));
+      }
+
+      const filteredListings = await query;
+      res.json(filteredListings);
+    } catch (error: any) {
+      console.error("Failed to fetch listings:", error);
+      res.status(500).json({ 
+        message: "Failed to fetch listings",
+        details: error.message 
+      });
+    }
   });
 
   app.post("/api/listings", async (req, res) => {
