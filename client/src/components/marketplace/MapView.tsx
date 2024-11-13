@@ -27,7 +27,7 @@ interface GeocodedListing extends Listing {
 const geocodeLocation = async (location: string) => {
   if (!location) return null;
   
-  const apiKey = process.env.NEXT_PUBLIC_OPENCAGE_API_KEY;
+  const apiKey = import.meta.env.VITE_OPENCAGE_API_KEY;
   if (!apiKey) {
     console.error('OpenCage API key is missing');
     return null;
@@ -68,7 +68,7 @@ const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (va
 
     try {
       const response = await fetch(
-        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${process.env.NEXT_PUBLIC_OPENCAGE_API_KEY}&limit=5`
+        `https://api.opencagedata.com/geocode/v1/json?q=${encodeURIComponent(query)}&key=${import.meta.env.VITE_OPENCAGE_API_KEY}&limit=5`
       );
       const data = await response.json();
 
@@ -131,7 +131,7 @@ const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) 
       const { lat, lng } = e.latlng;
       try {
         const response = await fetch(
-          `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${process.env.NEXT_PUBLIC_OPENCAGE_API_KEY}&limit=1`
+          `https://api.opencagedata.com/geocode/v1/json?q=${lat}+${lng}&key=${import.meta.env.VITE_OPENCAGE_API_KEY}&limit=1`
         );
         const data = await response.json();
         
@@ -154,7 +154,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const mapRef = useRef<L.Map>(null);
 
-  if (!process.env.NEXT_PUBLIC_OPENCAGE_API_KEY) {
+  if (!import.meta.env.VITE_OPENCAGE_API_KEY) {
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
         <div className="text-destructive">
@@ -178,26 +178,14 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
       if (!listings.length) return;
       
       setIsLoading(true);
-      console.log('Starting geocoding for', listings.length, 'listings');
       
       try {
         const geocoded = await Promise.all(
           listings.map(async (listing) => {
-            if (!listing.location) {
-              console.log('Skipping listing without location:', listing.id);
-              return { ...listing };
-            }
+            if (!listing.location) return { ...listing };
             
-            console.log('Geocoding listing:', listing.id, listing.location);
             const coordinates = await geocodeLocation(listing.location);
-            
-            if (!coordinates) {
-              console.warn(`No coordinates found for listing ${listing.id}`);
-              return { ...listing };
-            }
-            
-            console.log('Coordinates found:', coordinates);
-            return { ...listing, coordinates };
+            return coordinates ? { ...listing, coordinates } : { ...listing };
           })
         );
 
@@ -205,7 +193,6 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           !!listing.coordinates
         );
         
-        console.log('Valid geocoded listings:', validListings.length);
         setGeocodedListings(geocoded);
         
         if (validListings.length > 0) {
@@ -243,9 +230,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
-          whenCreated={(map) => {
-            mapRef.current = map;
-          }}
+          ref={mapRef}
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
