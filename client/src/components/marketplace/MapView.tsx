@@ -222,20 +222,23 @@ const MapView = ({ listings, onListingClick }: MapViewProps) => {
       <LocationSearchInput
         onLocationSelect={(location, coordinates) => {
           if (map) {
-            map.setView(coordinates, 13);
+            requestAnimationFrame(() => {
+              map.setView(coordinates, 13, { animate: false });
+            });
           }
         }}
       />
       
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel">
         <MapContainer
-          key="map-container"
+          key={`map-${mapCenter[0]}-${mapCenter[1]}-${mapZoom}`}
           center={mapCenter}
           zoom={mapZoom}
-          scrollWheelZoom={true}
+          scrollWheelZoom={false}
           className="h-full w-full"
-          whenReady={(e) => {
-            setMap(e.target);
+          whenReady={(map) => {
+            console.log('Map created');
+            setMap(map.target);
           }}
         >
           <TileLayer
@@ -243,7 +246,6 @@ const MapView = ({ listings, onListingClick }: MapViewProps) => {
             url={`https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}?access_token=${import.meta.env.VITE_MAPBOX_API_KEY}`}
             tileSize={512}
             zoomOffset={-1}
-            maxZoom={18}
           />
           {geocodedListings.map((listing) => {
             if (!listing.coordinates) return null;
@@ -257,7 +259,7 @@ const MapView = ({ listings, onListingClick }: MapViewProps) => {
                 }}
               >
                 <Popup>
-                  <div className="space-y-2">
+                  <div className="space-y-2 p-2">
                     <h3 className="font-bold">{listing.title}</h3>
                     <Badge variant={listing.type === "Request" ? "secondary" : "default"}>
                       {listing.type}

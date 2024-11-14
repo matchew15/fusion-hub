@@ -84,11 +84,6 @@
     width: 100%;
     height: 100%;
     z-index: 1;
-    background-color: #242424;
-  }
-
-  .leaflet-tile {
-    filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
   }
 
   .leaflet-control-container .leaflet-control {
@@ -98,16 +93,12 @@
   }
 
   .leaflet-popup-content-wrapper {
-    @apply bg-background border border-primary/30 !important;
-    box-shadow: 0 0 10px theme('colors.primary.DEFAULT');
-  }
-
-  .leaflet-popup-content {
-    @apply text-foreground !important;
+    background-color: hsl(var(--background));
+    border: 1px solid hsl(var(--primary) / 0.3);
   }
 
   .leaflet-popup-tip {
-    @apply bg-background border border-primary/30 !important;
+    background-color: hsl(var(--background));
   }
 
   .request-marker {
