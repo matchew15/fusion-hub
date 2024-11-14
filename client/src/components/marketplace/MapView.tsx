@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { Icon, Map } from 'leaflet';
 import { Loader2, MapPin } from 'lucide-react';
@@ -31,6 +31,89 @@ interface GeocodedListing extends Listing {
   coordinates?: [number, number];
 }
 
+const LocationSearchInput = ({ onLocationSelect }: { onLocationSelect: (location: string, coordinates: [number, number]) => void }) => {
+  const [suggestions, setSuggestions] = useState<Array<{ place_name: string; center: [number, number] }>>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleSearch = async (searchQuery: string) => {
+    setQuery(searchQuery);
+    if (!searchQuery) {
+      setSuggestions([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchQuery)}.json?access_token=${import.meta.env.VITE_MAPBOX_API_KEY}&limit=5`
+      );
+      const data = await response.json();
+
+      if (data.features) {
+        setSuggestions(
+          data.features.map((feature: any) => ({
+            place_name: feature.place_name,
+            center: [feature.center[1], feature.center[0]] // Convert to [lat, lng]
+          }))
+        );
+        setShowSuggestions(true);
+      }
+    } catch (error) {
+      console.error('Location search failed:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        {isSearching ? (
+          <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
+        ) : (
+          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+        )}
+        <Input
+          ref={inputRef}
+          type="text"
+          value={query}
+          placeholder="Search location..."
+          className="pl-10 cyber-panel neon-focus"
+          onChange={(e) => handleSearch(e.target.value)}
+          onFocus={() => setShowSuggestions(true)}
+          onBlur={() => {
+            setTimeout(() => setShowSuggestions(false), 200);
+          }}
+        />
+      </div>
+
+      {showSuggestions && suggestions.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-background border border-primary/30 rounded-md shadow-lg">
+          {suggestions.map((suggestion, index) => (
+            <button
+              key={index}
+              className="w-full px-4 py-2 text-left hover:bg-primary/10"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onLocationSelect(suggestion.place_name, suggestion.center);
+                setQuery(suggestion.place_name);
+                setShowSuggestions(false);
+                inputRef.current?.blur();
+              }}
+            >
+              <MapPin className="inline-block w-4 h-4 mr-2 text-muted-foreground" />
+              {suggestion.place_name}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const MapView = ({ listings, onListingClick }: MapViewProps) => {
   const [map, setMap] = useState<Map | null>(null);
   const [geocodedListings, setGeocodedListings] = useState<GeocodedListing[]>([]);
@@ -38,7 +121,6 @@ const MapView = ({ listings, onListingClick }: MapViewProps) => {
   const [mapZoom] = useState(2);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
 
   const geocodeLocation = async (location: string) => {
     if (!location) return null;
@@ -128,8 +210,8 @@ const MapView = ({ listings, onListingClick }: MapViewProps) => {
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
         <div className="text-destructive space-y-2 text-center p-4">
-          <p className="font-bold">{error}</p>
-          <p className="text-sm text-muted-foreground">Unable to initialize map service. Please check configuration.</p>
+          <p className="font-bold">Map Service Error</p>
+          <p className="text-sm text-muted-foreground">{error}</p>
         </div>
       </div>
     );
@@ -137,11 +219,12 @@ const MapView = ({ listings, onListingClick }: MapViewProps) => {
 
   return (
     <div className="space-y-4">
-      <Input
-        placeholder="Search location..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="cyber-panel neon-focus"
+      <LocationSearchInput
+        onLocationSelect={(location, coordinates) => {
+          if (map) {
+            map.setView(coordinates, 13);
+          }
+        }}
       />
       
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel">
@@ -151,9 +234,8 @@ const MapView = ({ listings, onListingClick }: MapViewProps) => {
           zoom={mapZoom}
           scrollWheelZoom={true}
           className="h-full w-full"
-          whenCreated={(mapInstance) => {
-            console.log('Map created');
-            setMap(mapInstance);
+          whenReady={(e) => {
+            setMap(e.target);
           }}
         >
           <TileLayer
