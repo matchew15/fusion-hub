@@ -10,6 +10,7 @@ import { Loader2, Upload, X, MapPin, Hash, Phone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useUser } from "@/hooks/use-user";
 import imageCompression from "browser-image-compression";
+import { LocationSearchInput } from './MapView';
 import {
   Select,
   SelectContent,
@@ -321,10 +322,16 @@ export default function ListingForm({ onSuccess }: ListingFormProps) {
                 <FormItem>
                   <FormLabel>Location</FormLabel>
                   <FormControl>
-                    <div className="relative">
-                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                      <Input {...field} className="pl-10 cyber-panel neon-focus" />
-                    </div>
+                    <LocationSearchInput
+                      value={field.value}
+                      onLocationSelect={(location) => {
+                        field.onChange(location);
+                        // Dismiss keyboard on mobile
+                        if (document.activeElement instanceof HTMLElement) {
+                          document.activeElement.blur();
+                        }
+                      }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

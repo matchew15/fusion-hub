@@ -31,12 +31,20 @@ interface GeocodedListing extends Listing {
   coordinates?: [number, number];
 }
 
-const LocationSearchInput = ({ onLocationSelect }: { onLocationSelect: (location: string, coordinates: [number, number]) => void }) => {
+// Export LocationSearchInput component
+export const LocationSearchInput = ({ value, onLocationSelect }: { 
+  value: string; 
+  onLocationSelect: (location: string) => void;
+}) => {
   const [suggestions, setSuggestions] = useState<Array<{ place_name: string; center: [number, number] }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(value);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setQuery(value);
+  }, [value]);
 
   const handleSearch = async (searchQuery: string) => {
     setQuery(searchQuery);
@@ -56,7 +64,7 @@ const LocationSearchInput = ({ onLocationSelect }: { onLocationSelect: (location
         setSuggestions(
           data.features.map((feature: any) => ({
             place_name: feature.place_name,
-            center: [feature.center[1], feature.center[0]] // Convert to [lat, lng]
+            center: [feature.center[1], feature.center[0]]
           }))
         );
         setShowSuggestions(true);
@@ -85,7 +93,10 @@ const LocationSearchInput = ({ onLocationSelect }: { onLocationSelect: (location
           onChange={(e) => handleSearch(e.target.value)}
           onFocus={() => setShowSuggestions(true)}
           onBlur={() => {
-            setTimeout(() => setShowSuggestions(false), 200);
+            setTimeout(() => {
+              setShowSuggestions(false);
+              onLocationSelect(query);
+            }, 200);
           }}
         />
       </div>
@@ -98,7 +109,7 @@ const LocationSearchInput = ({ onLocationSelect }: { onLocationSelect: (location
               className="w-full px-4 py-2 text-left hover:bg-primary/10"
               onMouseDown={(e) => {
                 e.preventDefault();
-                onLocationSelect(suggestion.place_name, suggestion.center);
+                onLocationSelect(suggestion.place_name);
                 setQuery(suggestion.place_name);
                 setShowSuggestions(false);
                 inputRef.current?.blur();
@@ -123,6 +134,7 @@ const MapView = ({ listings, onListingClick }: MapViewProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [selectedLocation, setSelectedLocation] = useState("");
 
   useEffect(() => {
     if (map) {
@@ -236,10 +248,15 @@ const MapView = ({ listings, onListingClick }: MapViewProps) => {
   return (
     <div className="space-y-4">
       <LocationSearchInput
-        onLocationSelect={(location, coordinates) => {
+        value={selectedLocation}
+        onLocationSelect={(location) => {
+          setSelectedLocation(location);
           if (mapRef.current) {
             requestAnimationFrame(() => {
-              mapRef.current?.setView(coordinates, 13, { animate: false });
+              const coordinates = geocodedListings.find(listing => listing.location === location)?.coordinates;
+              if (coordinates) {
+                mapRef.current?.setView(coordinates, 13, { animate: false });
+              }
             });
           }
         }}
