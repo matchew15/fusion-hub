@@ -3,7 +3,6 @@
     "marketplace": "Marketplace",
     "wallet": "Wallet",
     "chat": "Chat",
-    "profile": "Profile",
     "login": "Connect with Pi",
     "logout": "Logout",
     "welcome": "Welcome, {{username}}"
@@ -33,22 +32,5 @@
       "description": "Join our community to start trading with Pi",
       "action": "Register Now"
     }
-  },
-  "profile": {
-    "title": "Profile",
-    "avatar": {
-      "change": "Change Avatar",
-      "optimizing": "Optimizing..."
-    },
-    "form": {
-      "username": "Username",
-      "bio": "Bio",
-      "bioPlaceholder": "Tell others about yourself...",
-      "whatsapp": "WhatsApp Number",
-      "whatsappPlaceholder": "+1234567890",
-      "update": "Update Profile",
-      "updating": "Updating..."
-    },
-    "loginRequired": "Please login to view your profile"
   }
 }

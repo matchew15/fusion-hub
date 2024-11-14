@@ -19,35 +19,6 @@ export function registerRoutes(app: Express) {
     res.status(401).json({ message: "Unauthorized" });
   });
 
-  // Add profile update endpoint
-  app.put("/api/users/profile", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    try {
-      const [updatedUser] = await db
-        .update(users)
-        .set({
-          username: req.body.username,
-          bio: req.body.bio,
-          whatsappNumber: req.body.whatsappNumber,
-          avatar: req.body.avatar,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, req.user.id))
-        .returning();
-
-      res.json(updatedUser);
-    } catch (error: any) {
-      console.error("Failed to update profile:", error);
-      res.status(500).json({ 
-        message: "Failed to update profile",
-        details: error.message 
-      });
-    }
-  });
-
   // Enhanced listings route with filters
   app.get("/api/listings", async (req, res) => {
     try {

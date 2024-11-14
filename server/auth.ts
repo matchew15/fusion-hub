@@ -16,8 +16,9 @@ declare global {
 
 // Validation schema for Pi Network authentication
 const piAuthSchema = z.object({
-  uid: z.string().min(1, "Pi UID is required"),
+  piUid: z.string().min(1, "Pi UID is required"),
   accessToken: z.string().min(1, "Access token is required"),
+  username: z.string().min(1, "Username is required")
 });
 
 export function setupAuth(app: Express) {
@@ -71,8 +72,8 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Pi Network Authentication endpoint
-  app.post("/api/auth/pi", async (req, res) => {
+  // Pi Network Authentication with improved error handling and validation
+  app.post("/pi-auth", async (req, res) => {
     try {
       // Validate request body
       const validationResult = piAuthSchema.safeParse(req.body);
@@ -84,25 +85,24 @@ export function setupAuth(app: Express) {
         });
       }
 
-      const { uid, accessToken } = validationResult.data;
+      const { piUid, accessToken, username } = validationResult.data;
 
       // Check if user exists by Pi UID
       let [user] = await db
         .select()
         .from(users)
-        .where(eq(users.piUid, uid))
+        .where(eq(users.piUid, piUid))
         .limit(1);
 
       if (!user) {
-        // Create new user
+        // Create new user with validation and error handling
         try {
           const [newUser] = await db
             .insert(users)
             .values({
-              username: `user_${uid.slice(-6)}`, // Generate temporary username
-              piUid: uid,
+              username,
+              piUid,
               piAccessToken: accessToken,
-              status: 'active'
             })
             .returning();
           
@@ -110,6 +110,14 @@ export function setupAuth(app: Express) {
           user = newUser;
         } catch (error: any) {
           console.error("User creation error:", error);
+          
+          if (error.code === '23505') { // Unique constraint violation
+            return res.status(409).json({
+              message: "Username already exists",
+              code: "USERNAME_TAKEN"
+            });
+          }
+          
           throw error;
         }
       } else {
@@ -119,7 +127,7 @@ export function setupAuth(app: Express) {
             .update(users)
             .set({ 
               piAccessToken: accessToken,
-              status: 'active'
+              username: username // Update username if changed
             })
             .where(eq(users.id, user.id))
             .returning();
@@ -130,7 +138,7 @@ export function setupAuth(app: Express) {
         }
       }
 
-      // Log the user in
+      // Log the user in with enhanced error handling
       return new Promise<void>((resolve, reject) => {
         req.login(user, (err) => {
           if (err) {
@@ -147,7 +155,6 @@ export function setupAuth(app: Express) {
             id: user.id,
             username: user.username,
             piUid: user.piUid,
-            status: user.status
           },
         });
       }).catch((error) => {
@@ -167,7 +174,7 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/auth/logout", (req, res) => {
+  app.post("/logout", (req, res) => {
     req.logout((err) => {
       if (err) {
         console.error("Logout error:", err);
@@ -181,15 +188,24 @@ export function setupAuth(app: Express) {
   });
 
   // Public route for checking authentication status
-  app.get("/api/auth/status", (req, res) => {
+  app.get("/api/auth-status", (req, res) => {
     res.json({ 
       authenticated: req.isAuthenticated(),
       user: req.user ? {
         id: req.user.id,
         username: req.user.username,
-        piUid: req.user.piUid,
-        status: req.user.status
+        piUid: req.user.piUid
       } : null
     });
+  });
+
+  app.get("/api/user", (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ 
+        message: "Unauthorized",
+        code: "NOT_AUTHENTICATED"
+      });
+    }
+    res.json(req.user);
   });
 }
