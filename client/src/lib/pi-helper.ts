@@ -37,19 +37,11 @@ declare global {
   }
 }
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000; // 1 second
-const REQUIRED_SCOPES = ['payments'];
-
 class PiHelper {
   private sdk: PiNetwork | null = null;
   private initialized = false;
   private initializationPromise: Promise<void> | null = null;
   private initializationError: Error | null = null;
-
-  private async delay(ms: number) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-  }
 
   private formatError(error: any, context: string): PiError {
     const formattedError = new Error() as PiError;
@@ -86,19 +78,25 @@ class PiHelper {
       return this.initializationPromise;
     }
 
+    // Add a delay to ensure Pi SDK is fully loaded
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    if (!window.Pi) {
+      throw this.formatError(
+        { message: 'Pi SDK not found. Please refresh the page.' },
+        'SDK Check'
+      );
+    }
+
     this.initializationPromise = new Promise(async (resolve, reject) => {
       try {
-        this.sdk = window.Pi!;
+        this.sdk = window.Pi;
         await this.sdk.init({
           version: "2.0",
-          sandbox: process.env.NODE_ENV !== "production"
+          sandbox: false // Always use production for Pi Browser
         });
         
-        console.info('Pi SDK initialized successfully', {
-          environment: process.env.NODE_ENV,
-          sandbox: process.env.NODE_ENV !== "production"
-        });
-        
+        console.info('Pi SDK initialized successfully');
         this.initialized = true;
         resolve();
       } catch (error) {
@@ -119,30 +117,31 @@ class PiHelper {
       );
     }
 
-    if (!this.initialized) {
-      await this.init();
-    }
-
     try {
-      console.info('Starting Pi authentication with scopes:', REQUIRED_SCOPES);
+      if (!this.initialized) {
+        await this.init();
+      }
+
       const auth = await this.sdk!.authenticate(
-        REQUIRED_SCOPES,
-        { onIncompletePaymentFound: this.handleIncompletePayment.bind(this) }
+        ['payments', 'username', 'wallet_address'],
+        {
+          onIncompletePaymentFound: (payment: any) => {
+            console.log('Incomplete payment found:', payment);
+            return Promise.resolve();
+          }
+        }
       );
 
       if (!auth?.user?.uid || !auth?.accessToken) {
-        throw this.formatError(
-          { message: 'Invalid authentication response' },
-          'Authentication Response'
-        );
+        throw new Error('Invalid authentication response');
       }
 
-      console.info('Authentication successful', { uid: auth.user.uid });
       return {
         uid: auth.user.uid,
         accessToken: auth.accessToken
       };
     } catch (error) {
+      console.error('Authentication error:', error);
       throw this.formatError(error, 'Authentication');
     }
   }

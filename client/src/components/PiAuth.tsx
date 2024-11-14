@@ -19,14 +19,18 @@ export function PiAuth() {
       toast({
         variant: "destructive",
         title: "Browser Error",
-        description: "Please use Pi Browser to authenticate",
+        description: "Please use Pi Browser to authenticate"
       });
       return;
     }
 
     try {
       setIsAuthenticating(true);
+      
+      // Initialize first
       await piHelper.init();
+      
+      // Then authenticate
       const auth = await piHelper.authenticate();
       
       const response = await fetch('/api/auth/pi', {
@@ -36,7 +40,8 @@ export function PiAuth() {
       });
 
       if (!response.ok) {
-        throw new Error('Authentication failed');
+        const error = await response.json();
+        throw new Error(error.message || 'Authentication failed');
       }
       
       const user = await response.json();
@@ -52,7 +57,7 @@ export function PiAuth() {
       toast({
         variant: "destructive",
         title: "Authentication Failed",
-        description: error.message
+        description: error.message || 'Failed to connect to Pi Network'
       });
     } finally {
       setIsAuthenticating(false);
