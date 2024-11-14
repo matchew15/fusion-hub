@@ -11,6 +11,7 @@ import Home from "./pages/Home";
 import Marketplace from "./pages/Marketplace";
 import Wallet from "./pages/Wallet";
 import Chat from "./pages/Chat";
+import Profile from "./pages/Profile";
 import Navbar from "./components/layout/Navbar";
 
 // Wait for translations to be loaded
@@ -27,6 +28,7 @@ i18n.loadNamespaces(['common', 'translation']).then(() => {
                 <Route path="/marketplace" component={Marketplace} />
                 <Route path="/wallet" component={Wallet} />
                 <Route path="/chat" component={Chat} />
+                <Route path="/profile" component={Profile} />
                 <Route>404 Page Not Found</Route>
               </Switch>
             </main>
