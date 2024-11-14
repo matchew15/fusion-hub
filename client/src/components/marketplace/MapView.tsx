@@ -67,7 +67,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
 
   useEffect(() => {
     const geocodeListings = async () => {
-      if (!listings.length) {
+      if (!listings.length || !map) {
         setIsLoading(false);
         return;
       }
@@ -99,12 +99,17 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
 
         // Find first valid listing with coordinates to center map
         const validListing = validListings.find(listing => listing.coordinates);
-        if (validListing?.coordinates) {
+        if (validListing?.coordinates && map) {
+          // Update state first
           setMapCenter(validListing.coordinates);
           setMapZoom(13);
-          if (map) {
-            map.setView(validListing.coordinates, 13);
-          }
+          
+          // Then update map view safely
+          requestAnimationFrame(() => {
+            if (map) {
+              map.setView(validListing.coordinates!, 13, { animate: false });
+            }
+          });
         }
       } catch (error) {
         console.error('Failed to process listings:', error);
@@ -114,11 +119,8 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
       }
     };
 
-    if (import.meta.env.VITE_MAPBOX_API_KEY) {
+    if (import.meta.env.VITE_MAPBOX_API_KEY && map) {
       geocodeListings();
-    } else {
-      setError('Map Service Configuration Error');
-      setIsLoading(false);
     }
   }, [listings, map]);
 
@@ -141,9 +143,13 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     const handleSuggestionSelect = (suggestion: { place_name: string; center: [number, number] }) => {
       onChange(suggestion.place_name);
       setShowSuggestions(false);
+      
       if (map) {
-        map.setView([suggestion.center[1], suggestion.center[0]], 13);
+        requestAnimationFrame(() => {
+          map.setView([suggestion.center[1], suggestion.center[0]], 13, { animate: false });
+        });
       }
+      
       inputRef.current?.blur();
     };
 
@@ -168,7 +174,7 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
           setSuggestions(
             data.features.map((feature: any) => ({
               place_name: feature.place_name,
-              center: [feature.center[1], feature.center[0]]
+              center: feature.center
             }))
           );
           setShowSuggestions(true);
@@ -284,13 +290,14 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
 
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel">
         <MapContainer
+          key={`map-${mapCenter[0]}-${mapCenter[1]}`}
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
-          whenReady={(e) => {
+          whenCreated={(mapInstance) => {
             console.log('Map initialized');
-            setMap(e.target);
-            mapRef.current = e.target;
+            setMap(mapInstance);
+            mapRef.current = mapInstance;
           }}
           style={{ height: '600px', width: '100%' }}
         >
