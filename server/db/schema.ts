@@ -1,10 +1,21 @@
-import { pgTable, text, timestamp, numeric, pgEnum, serial, integer, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, numeric, pgEnum, serial, integer, boolean, decimal } from 'drizzle-orm/pg-core';
+
+export const userStatusEnum = pgEnum('user_status', [
+  'active',
+  'inactive',
+  'suspended',
+  'unverified'
+]);
 
 export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   username: text('username').notNull().unique(),
   piUid: text('pi_uid').notNull().unique(),
   piAccessToken: text('pi_access_token').notNull(),
+  avatar: text('avatar'),
+  bio: text('bio'),
+  rating: decimal('rating', { precision: 3, scale: 2 }).default('5.00'),
+  status: userStatusEnum('status').notNull().default('unverified'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow()
 });

@@ -8,7 +8,11 @@ export const users = pgTable("users", {
   piUid: text("pi_uid").unique(), // Pi Network unique identifier
   piAccessToken: text("pi_access_token"), // Pi Network access token
   piWalletAddress: text("pi_wallet_address"),
-  whatsappNumber: text("whatsapp_number"), // Added WhatsApp number field
+  whatsappNumber: text("whatsapp_number"), // WhatsApp number field
+  avatar: text("avatar"), // User avatar URL
+  bio: text("bio"), // User biography
+  rating: decimal("rating", { precision: 3, scale: 2 }).default('5.00'), // User rating
+  status: text("status").default('unverified'), // User status
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -23,7 +27,7 @@ export const listings = pgTable("listings", {
   hashtags: text("hashtags").array(), // Array of hashtags
   image: text("image").notNull(),
   location: text("location"),
-  whatsappNumber: text("whatsapp_number"), // Added WhatsApp number field for direct contact
+  whatsappNumber: text("whatsapp_number"), // WhatsApp number field for direct contact
   active: boolean("active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -52,6 +56,10 @@ export const insertUserSchema = createInsertSchema(users, {
   piAccessToken: z.string().optional(),
   piWalletAddress: z.string().optional(),
   whatsappNumber: z.string().optional(),
+  avatar: z.string().url().optional(),
+  bio: z.string().max(500).optional(),
+  rating: z.number().min(0).max(5).optional(),
+  status: z.enum(['active', 'inactive', 'suspended', 'unverified']).default('unverified'),
 });
 
 export const selectUserSchema = createSelectSchema(users);
