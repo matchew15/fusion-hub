@@ -33,7 +33,10 @@ export function useUser() {
   const { data: authData, error, mutate } = useSWR<{
     authenticated: boolean;
     user: User | null;
-  }>("/api/auth-status");
+  }>('/api/auth-status', {
+    refreshInterval: 0,
+    revalidateOnFocus: false
+  });
 
   // Handle automatic redirection to profile page for new users
   useEffect(() => {
@@ -65,7 +68,6 @@ export function useUser() {
     }));
 
     try {
-      // Initialize Pi SDK first
       await piHelper.init();
       const authResult = await piHelper.authenticate();
       
@@ -126,7 +128,6 @@ export function useUser() {
         const shouldRetry = newRetryCount < maxRetries;
 
         if (shouldRetry) {
-          // Exponential backoff for retries
           const delay = Math.min(
             RETRY_DELAY_BASE * Math.pow(2, prev.retryCount),
             10000 // Max 10 second delay
@@ -191,6 +192,7 @@ export function useUser() {
     isAuthenticating: authState.isAuthenticating,
     retryCount: authState.retryCount,
     isProfileComplete: authData?.user?.status === 'active',
+    authData,
     login: authenticateWithPi,
     logout,
   };

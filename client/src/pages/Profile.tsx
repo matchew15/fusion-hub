@@ -32,7 +32,7 @@ const updateProfileSchema = z.object({
 type UpdateProfileSchema = z.infer<typeof updateProfileSchema>;
 
 export default function ProfilePage() {
-  const { user } = useUser();
+  const { user, authData } = useUser();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -48,23 +48,40 @@ export default function ProfilePage() {
     },
   });
 
+  // Show loading state while authentication data is being fetched
+  if (!authData) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Redirect if user is not authenticated
+  if (!user) {
+    navigate('/');
+    return null;
+  }
+
   useEffect(() => {
-    if (!user) {
-      navigate("/");
+    if (authData && !user) {
+      navigate('/');
       return;
     }
 
-    // Calculate profile completion percentage
-    let completed = 0;
-    const totalFields = 4; // username, bio, whatsappNumber, avatar
+    if (user) {
+      // Calculate profile completion percentage
+      let completed = 0;
+      const totalFields = 4;
 
-    if (user.username) completed++;
-    if (user.bio) completed++;
-    if (user.whatsappNumber) completed++;
-    if (user.avatar) completed++;
+      if (user.username) completed++;
+      if (user.bio) completed++;
+      if (user.whatsappNumber) completed++;
+      if (user.avatar) completed++;
 
-    setCompletionPercentage((completed / totalFields) * 100);
-  }, [user, navigate]);
+      setCompletionPercentage((completed / totalFields) * 100);
+    }
+  }, [user, authData, navigate]);
 
   const onSubmit = async (values: UpdateProfileSchema) => {
     try {
@@ -97,10 +114,6 @@ export default function ProfilePage() {
       setIsSubmitting(false);
     }
   };
-
-  if (!user) {
-    return null;
-  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
