@@ -4,15 +4,14 @@ import { Button } from "@/components/ui/button";
 import { useUser } from "@/hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { LanguageSelector } from "@/components/ui/language-selector";
 
 const Navbar = React.memo(function Navbar() {
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const { user, login, logout } = useUser();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const [isAuthenticating, setIsAuthenticating] = React.useState(false);
 
   const handleLogin = async () => {
     if (isAuthenticating) return;

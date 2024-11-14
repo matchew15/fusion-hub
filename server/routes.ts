@@ -3,13 +3,20 @@ import { setupAuth } from "./auth";
 import { db } from "../db";
 import { listings, transactions, chats, users } from "../db/schema";
 import { eq, and, or, ilike, sql } from "drizzle-orm";
+import profileRoutes from './routes/profile';
 
 export function registerRoutes(app: Express) {
   setupAuth(app);
 
+  // Register profile routes
+  app.use('/api/user/profile', profileRoutes);
+
   // Add a public route for initial auth check
   app.get("/api/auth-check", (req, res) => {
-    res.json({ authenticated: req.isAuthenticated() });
+    res.json({ 
+      authenticated: req.isAuthenticated(),
+      profileComplete: req.user?.status === 'active'
+    });
   });
 
   app.get("/api/user", (req, res) => {

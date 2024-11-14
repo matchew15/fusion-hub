@@ -4,6 +4,7 @@ import { useUser } from "@/hooks/use-user";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
 import TransactionHistory from "@/components/TransactionHistory";
+import React from "react";
 
 export default function Home() {
   const { user } = useUser();

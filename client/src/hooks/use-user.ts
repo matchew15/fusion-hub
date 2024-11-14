@@ -1,7 +1,8 @@
 import useSWR from "swr";
 import { piHelper } from "@/lib/pi-helper";
 import type { User } from "db/schema";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 
 interface AuthError {
   code?: string;
@@ -21,6 +22,7 @@ const MAX_RETRIES = 3;
 const MIN_RETRY_INTERVAL = 2000; // Minimum time between retries
 
 export function useUser() {
+  const [, setLocation] = useLocation();
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticating: false,
     error: null,
@@ -32,6 +34,13 @@ export function useUser() {
     authenticated: boolean;
     user: User | null;
   }>("/api/auth-status");
+
+  // Handle automatic redirection to profile page for new users
+  useEffect(() => {
+    if (authData?.user && authData.user.status === 'unverified') {
+      setLocation('/profile');
+    }
+  }, [authData?.user, setLocation]);
 
   const authenticateWithPi = async (maxRetries = MAX_RETRIES) => {
     if (authState.isAuthenticating) {
@@ -91,6 +100,11 @@ export function useUser() {
         retryCount: 0,
         lastAttempt: null
       });
+
+      // Redirect to profile page if user is unverified
+      if (data.user?.status === 'unverified') {
+        setLocation('/profile');
+      }
       
       return { ok: true };
     } catch (error: any) {
@@ -176,6 +190,7 @@ export function useUser() {
     error: authState.error,
     isAuthenticating: authState.isAuthenticating,
     retryCount: authState.retryCount,
+    isProfileComplete: authData?.user?.status === 'active',
     login: authenticateWithPi,
     logout,
   };

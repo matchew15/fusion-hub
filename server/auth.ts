@@ -72,7 +72,7 @@ export function setupAuth(app: Express) {
     }
   });
 
-  // Pi Network Authentication with improved error handling and validation
+  // Pi Network Authentication with improved error handling, validation, and profile completion check
   app.post("/pi-auth", async (req, res) => {
     try {
       // Validate request body
@@ -94,6 +94,8 @@ export function setupAuth(app: Express) {
         .where(eq(users.piUid, piUid))
         .limit(1);
 
+      let isNewUser = false;
+
       if (!user) {
         // Create new user with validation and error handling
         try {
@@ -103,11 +105,13 @@ export function setupAuth(app: Express) {
               username,
               piUid,
               piAccessToken: accessToken,
+              status: 'unverified', // Set initial status as unverified
             })
             .returning();
           
           console.info("New user created:", { id: newUser.id, username: newUser.username });
           user = newUser;
+          isNewUser = true;
         } catch (error: any) {
           console.error("User creation error:", error);
           
@@ -155,6 +159,8 @@ export function setupAuth(app: Express) {
             id: user.id,
             username: user.username,
             piUid: user.piUid,
+            status: user.status,
+            isNewUser
           },
         });
       }).catch((error) => {
