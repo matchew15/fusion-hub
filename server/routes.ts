@@ -4,12 +4,15 @@ import { db } from "../db";
 import { listings, transactions, chats, users } from "../db/schema";
 import { eq, and, or, ilike, sql } from "drizzle-orm";
 import profileRoutes from './routes/profile';
+import authRoutes from './routes/auth';
 
 export function registerRoutes(app: Express) {
-  setupAuth(app);
+  // Register profile routes first
+  app.use('/api/profile', profileRoutes);
 
-  // Register profile routes
-  app.use('/api/user/profile', profileRoutes);
+  // Register auth routes
+  setupAuth(app);
+  app.use('/api/auth', authRoutes);
 
   // Add a public route for initial auth check
   app.get("/api/auth-check", (req, res) => {

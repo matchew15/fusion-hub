@@ -3,6 +3,7 @@ import Home from "@/pages/Home";
 import Chat from "@/pages/Chat";
 import Marketplace from "@/pages/Marketplace";
 import Profile from "@/pages/Profile";
+import Wallet from "@/pages/Wallet";
 import Navbar from "@/components/layout/Navbar";
 import { Toaster } from "@/components/ui/toaster";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -37,6 +38,7 @@ export default function App() {
           <Route path="/chat" component={Chat} />
           <Route path="/marketplace" component={Marketplace} />
           <Route path="/profile" component={ProtectedProfile} />
+          <Route path="/wallet" component={Wallet} />
         </Switch>
       </main>
       <Toaster />
