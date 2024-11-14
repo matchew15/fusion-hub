@@ -116,11 +116,22 @@ const LocationSearchInput = ({ onLocationSelect }: { onLocationSelect: (location
 
 const MapView = ({ listings, onListingClick }: MapViewProps) => {
   const [map, setMap] = useState<Map | null>(null);
+  const mapRef = useRef<Map | null>(null);
   const [geocodedListings, setGeocodedListings] = useState<GeocodedListing[]>([]);
   const [mapCenter] = useState<[number, number]>([20, 0]);
   const [mapZoom] = useState(2);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  useEffect(() => {
+    if (map) {
+      mapRef.current = map;
+      if (isInitialLoad) {
+        setIsInitialLoad(false);
+      }
+    }
+  }, [map, isInitialLoad]);
 
   const geocodeLocation = async (location: string) => {
     if (!location) return null;
@@ -147,7 +158,13 @@ const MapView = ({ listings, onListingClick }: MapViewProps) => {
 
   useEffect(() => {
     const geocodeListings = async () => {
-      if (!listings.length || !map) {
+      if (!listings.length || !mapRef.current) {
+        setIsLoading(false);
+        return;
+      }
+
+      if (!import.meta.env.VITE_MAPBOX_API_KEY) {
+        setError('Map Service Configuration Error');
         setIsLoading(false);
         return;
       }
@@ -177,12 +194,11 @@ const MapView = ({ listings, onListingClick }: MapViewProps) => {
 
         setGeocodedListings(validListings);
 
-        // Find first valid listing with coordinates to center map
-        const validListing = validListings.find(listing => listing.coordinates);
-        if (validListing?.coordinates && map) {
-          requestAnimationFrame(() => {
-            map.setView(validListing.coordinates!, 13, { animate: false });
-          });
+        if (isInitialLoad) {
+          const validListing = validListings.find(listing => listing.coordinates);
+          if (validListing?.coordinates && mapRef.current) {
+            mapRef.current.setView(validListing.coordinates, 13, { animate: false });
+          }
         }
       } catch (error) {
         console.error('Failed to process listings:', error);
@@ -193,7 +209,7 @@ const MapView = ({ listings, onListingClick }: MapViewProps) => {
     };
 
     geocodeListings();
-  }, [listings, map]);
+  }, [listings, isInitialLoad]);
 
   if (isLoading) {
     return (
@@ -221,9 +237,9 @@ const MapView = ({ listings, onListingClick }: MapViewProps) => {
     <div className="space-y-4">
       <LocationSearchInput
         onLocationSelect={(location, coordinates) => {
-          if (map) {
+          if (mapRef.current) {
             requestAnimationFrame(() => {
-              map.setView(coordinates, 13, { animate: false });
+              mapRef.current?.setView(coordinates, 13, { animate: false });
             });
           }
         }}
@@ -231,19 +247,18 @@ const MapView = ({ listings, onListingClick }: MapViewProps) => {
       
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel">
         <MapContainer
-          key={`map-${mapCenter[0]}-${mapCenter[1]}-${mapZoom}`}
           center={mapCenter}
           zoom={mapZoom}
           scrollWheelZoom={false}
           className="h-full w-full"
-          whenReady={(map) => {
-            console.log('Map created');
-            setMap(map.target);
+          whenCreated={(mapInstance) => {
+            console.log('Map initialized');
+            setMap(mapInstance);
           }}
         >
           <TileLayer
             attribution='© <a href="https://www.mapbox.com/about/maps/">Mapbox</a>'
-            url={`https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}?access_token=${import.meta.env.VITE_MAPBOX_API_KEY}`}
+            url={`https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}@2x?access_token=${import.meta.env.VITE_MAPBOX_API_KEY}`}
             tileSize={512}
             zoomOffset={-1}
           />
