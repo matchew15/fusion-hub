@@ -35,7 +35,10 @@ export function useUser() {
     user: User | null;
   }>('/api/auth-status', {
     refreshInterval: 0,
-    revalidateOnFocus: false
+    revalidateOnFocus: false,
+    onError: (err) => {
+      console.error('Auth status error:', err);
+    }
   });
 
   // Handle automatic redirection to profile page for new users
