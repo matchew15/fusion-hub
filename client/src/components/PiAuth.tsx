@@ -1,63 +1,60 @@
 import { useState } from "react";
 import { useNavigate } from "wouter";
-import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { piHelper } from "@/lib/pi-helper";
 import { useUser } from "@/hooks/use-user";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
 export function PiAuth() {
-  const { t } = useTranslation();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { mutate } = useUser();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const handleAuth = async () => {
-    if (!piHelper.isPiBrowser()) {
-      toast({
-        variant: "destructive",
-        title: "Browser Error",
-        description: "Please use Pi Browser to authenticate"
-      });
-      return;
-    }
-
     try {
       setIsAuthenticating(true);
       
-      // Initialize first
-      await piHelper.init();
-      
-      // Then authenticate
-      const auth = await piHelper.authenticate();
-      
+      // Simple Pi SDK check
+      if (typeof window.Pi === 'undefined') {
+        throw new Error('Please use Pi Browser');
+      }
+
+      // Basic Pi authentication
+      const auth = await window.Pi.authenticate(['payments', 'username'], {
+        onIncompletePaymentFound: (payment: any) => {
+          console.log('Incomplete payment found:', payment);
+          return Promise.resolve();
+        }
+      });
+
       const response = await fetch('/api/auth/pi', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(auth)
+        body: JSON.stringify({
+          accessToken: auth.accessToken,
+          uid: auth.user.uid
+        })
       });
 
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || 'Authentication failed');
       }
-      
-      const user = await response.json();
-      mutate(user);
+
+      const data = await response.json();
+      mutate(data.user);
       navigate('/profile');
-      
+
       toast({
         title: "Success",
-        description: "Successfully authenticated with Pi Network"
+        description: "Successfully connected with Pi"
       });
     } catch (error: any) {
-      console.error('Authentication error:', error);
       toast({
         variant: "destructive",
-        title: "Authentication Failed",
-        description: error.message || 'Failed to connect to Pi Network'
+        title: "Connection Failed",
+        description: error.message || 'Please try again'
       });
     } finally {
       setIsAuthenticating(false);
@@ -66,7 +63,7 @@ export function PiAuth() {
 
   return (
     <Button 
-      onClick={handleAuth} 
+      onClick={handleAuth}
       disabled={isAuthenticating}
       className="neon-focus"
     >
@@ -76,7 +73,7 @@ export function PiAuth() {
           Connecting...
         </>
       ) : (
-        t('nav.login')
+        'Connect with Pi'
       )}
     </Button>
   );
