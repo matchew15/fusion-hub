@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge";
 import type { Listing } from "db/schema";
 import 'leaflet/dist/leaflet.css';
 
-// Define icon URLs using CDN
 const MARKER_ICON_URL = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png';
 const MARKER_SHADOW_URL = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png';
 
@@ -32,15 +31,15 @@ interface GeocodedListing extends Listing {
   coordinates?: [number, number];
 }
 
-export default function MapView({ listings, onListingClick }: MapViewProps) {
+const MapView = ({ listings, onListingClick }: MapViewProps) => {
+  const [map, setMap] = useState<Map | null>(null);
+  const mapRef = useRef<Map | null>(null);
   const [geocodedListings, setGeocodedListings] = useState<GeocodedListing[]>([]);
-  const [mapCenter, setMapCenter] = useState<[number, number]>([20, 0]);
-  const [mapZoom, setMapZoom] = useState(2);
+  const [mapCenter] = useState<[number, number]>([20, 0]);
+  const [mapZoom] = useState(2);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [map, setMap] = useState<Map | null>(null);
-  const mapRef = useRef<Map | null>(null);
 
   const geocodeLocation = async (location: string) => {
     if (!location) return null;
@@ -100,15 +99,8 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
         // Find first valid listing with coordinates to center map
         const validListing = validListings.find(listing => listing.coordinates);
         if (validListing?.coordinates && map) {
-          // Update state first
-          setMapCenter(validListing.coordinates);
-          setMapZoom(13);
-          
-          // Then update map view safely
           requestAnimationFrame(() => {
-            if (map) {
-              map.setView(validListing.coordinates!, 13, { animate: false });
-            }
+            map.setView(validListing.coordinates!, 13, { animate: false });
           });
         }
       } catch (error) {
@@ -119,18 +111,16 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
       }
     };
 
-    if (import.meta.env.VITE_MAPBOX_API_KEY && map) {
-      geocodeListings();
-    }
+    geocodeListings();
   }, [listings, map]);
 
   const handleLocationSelect = useCallback(async (location: string) => {
     setSearchQuery(location);
     const coordinates = await geocodeLocation(location);
     if (coordinates && map) {
-      setMapCenter(coordinates);
-      setMapZoom(13);
-      map.setView(coordinates, 13);
+      requestAnimationFrame(() => {
+        map.setView(coordinates, 13, { animate: false });
+      });
     }
   }, [map]);
 
@@ -235,33 +225,6 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
     );
   };
 
-  const MapEvents = ({ onLocationSelect }: { onLocationSelect: (location: string) => void }) => {
-    useMapEvents({
-      click: async (e) => {
-        if (!import.meta.env.VITE_MAPBOX_API_KEY) return;
-        
-        const { lat, lng } = e.latlng;
-        try {
-          const response = await fetch(
-            `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${import.meta.env.VITE_MAPBOX_API_KEY}&limit=1`
-          );
-          
-          if (!response.ok) {
-            throw new Error('Reverse geocoding failed');
-          }
-          
-          const data = await response.json();
-          if (data.features && data.features.length > 0) {
-            onLocationSelect(data.features[0].place_name);
-          }
-        } catch (error) {
-          console.error('Reverse geocoding failed:', error);
-        }
-      },
-    });
-    return null;
-  };
-
   if (isLoading) {
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
@@ -287,29 +250,23 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
   return (
     <div className="space-y-4">
       <LocationSearchInput value={searchQuery} onChange={handleLocationSelect} />
-
+      
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel">
         <MapContainer
-          key={`map-${mapCenter[0]}-${mapCenter[1]}`}
           center={mapCenter}
           zoom={mapZoom}
           className="h-full w-full"
-          whenCreated={(mapInstance) => {
-            console.log('Map initialized');
-            setMap(mapInstance);
-            mapRef.current = mapInstance;
+          whenReady={(e) => {
+            setMap(e.target);
+            mapRef.current = e.target;
           }}
-          style={{ height: '600px', width: '100%' }}
         >
           <TileLayer
             attribution='© <a href="https://www.mapbox.com/about/maps/">Mapbox</a>'
             url={`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=${import.meta.env.VITE_MAPBOX_API_KEY}`}
-            maxZoom={18}
           />
-          <MapEvents onLocationSelect={handleLocationSelect} />
           {geocodedListings.map((listing) => {
             if (!listing.coordinates) {
-              console.debug('Skipping marker for listing without coordinates:', listing.id);
               return null;
             }
 
@@ -345,4 +302,6 @@ export default function MapView({ listings, onListingClick }: MapViewProps) {
       </div>
     </div>
   );
-}
+};
+
+export default MapView;

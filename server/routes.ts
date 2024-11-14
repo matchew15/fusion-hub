@@ -54,7 +54,7 @@ export function registerRoutes(app: Express) {
             
         if (hashtagArray.length > 0) {
           conditions.push(
-            sql`${listings.hashtags} ?| ${sql`array[${hashtagArray.join(',')}]`}`
+            sql`${listings.hashtags} && ${sql.array(hashtagArray, 'text')}`
           );
         }
       }
