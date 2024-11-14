@@ -84,6 +84,11 @@
     width: 100%;
     height: 100%;
     z-index: 1;
+    background-color: #242424;
+  }
+
+  .leaflet-tile {
+    filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
   }
 
   .leaflet-control-container .leaflet-control {
@@ -103,14 +108,6 @@
 
   .leaflet-popup-tip {
     @apply bg-background border border-primary/30 !important;
-  }
-
-  .leaflet-control-zoom {
-    @apply cyber-panel !important;
-  }
-
-  .leaflet-control-zoom a {
-    @apply text-foreground bg-background hover:bg-primary/20 !important;
   }
 
   .request-marker {

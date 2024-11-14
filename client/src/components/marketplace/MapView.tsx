@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { useEffect, useState } from 'react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import { Icon, Map } from 'leaflet';
-import { Loader2, Search, MapPin } from 'lucide-react';
+import { Loader2, MapPin } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import type { Listing } from "db/schema";
@@ -33,7 +33,6 @@ interface GeocodedListing extends Listing {
 
 const MapView = ({ listings, onListingClick }: MapViewProps) => {
   const [map, setMap] = useState<Map | null>(null);
-  const mapRef = useRef<Map | null>(null);
   const [geocodedListings, setGeocodedListings] = useState<GeocodedListing[]>([]);
   const [mapCenter] = useState<[number, number]>([20, 0]);
   const [mapZoom] = useState(2);
@@ -114,117 +113,6 @@ const MapView = ({ listings, onListingClick }: MapViewProps) => {
     geocodeListings();
   }, [listings, map]);
 
-  const handleLocationSelect = useCallback(async (location: string) => {
-    setSearchQuery(location);
-    const coordinates = await geocodeLocation(location);
-    if (coordinates && map) {
-      requestAnimationFrame(() => {
-        map.setView(coordinates, 13, { animate: false });
-      });
-    }
-  }, [map]);
-
-  const LocationSearchInput = ({ value, onChange }: { value: string; onChange: (value: string) => void }) => {
-    const [suggestions, setSuggestions] = useState<Array<{ place_name: string; center: [number, number] }>>([]);
-    const [showSuggestions, setShowSuggestions] = useState(false);
-    const [isSearching, setIsSearching] = useState(false);
-    const inputRef = useRef<HTMLInputElement>(null);
-
-    const handleSuggestionSelect = (suggestion: { place_name: string; center: [number, number] }) => {
-      onChange(suggestion.place_name);
-      setShowSuggestions(false);
-      
-      if (map) {
-        requestAnimationFrame(() => {
-          map.setView([suggestion.center[1], suggestion.center[0]], 13, { animate: false });
-        });
-      }
-      
-      inputRef.current?.blur();
-    };
-
-    const handleSearch = async (query: string) => {
-      if (!query || !import.meta.env.VITE_MAPBOX_API_KEY) {
-        setSuggestions([]);
-        return;
-      }
-
-      setIsSearching(true);
-      try {
-        const response = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json?access_token=${import.meta.env.VITE_MAPBOX_API_KEY}&limit=5`
-        );
-        
-        if (!response.ok) {
-          throw new Error('Location search failed');
-        }
-        
-        const data = await response.json();
-        if (data.features) {
-          setSuggestions(
-            data.features.map((feature: any) => ({
-              place_name: feature.place_name,
-              center: feature.center
-            }))
-          );
-          setShowSuggestions(true);
-        }
-      } catch (error) {
-        console.error('Location search failed:', error);
-      } finally {
-        setIsSearching(false);
-      }
-    };
-
-    useEffect(() => {
-      const timer = setTimeout(() => {
-        if (value) handleSearch(value);
-      }, 300);
-
-      return () => clearTimeout(timer);
-    }, [value]);
-
-    return (
-      <div className="relative">
-        <div className="relative">
-          {isSearching ? (
-            <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 animate-spin text-muted-foreground" />
-          ) : (
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-          )}
-          <Input
-            ref={inputRef}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onBlur={() => {
-              setTimeout(() => setShowSuggestions(false), 200);
-            }}
-            onFocus={() => value && setShowSuggestions(true)}
-            placeholder="Search location..."
-            className="cyber-panel neon-focus pl-10"
-          />
-        </div>
-        {showSuggestions && suggestions.length > 0 && (
-          <div className="absolute z-50 w-full mt-1 bg-background border border-primary/30 rounded-md shadow-lg">
-            {suggestions.map((suggestion, index) => (
-              <button
-                key={index}
-                className="w-full px-4 py-2 text-left hover:bg-primary/10"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  handleSuggestionSelect(suggestion);
-                }}
-              >
-                <MapPin className="inline-block w-4 h-4 mr-2 text-muted-foreground" />
-                {suggestion.place_name}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   if (isLoading) {
     return (
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel flex items-center justify-center">
@@ -249,36 +137,41 @@ const MapView = ({ listings, onListingClick }: MapViewProps) => {
 
   return (
     <div className="space-y-4">
-      <LocationSearchInput value={searchQuery} onChange={handleLocationSelect} />
+      <Input
+        placeholder="Search location..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="cyber-panel neon-focus"
+      />
       
       <div className="h-[600px] w-full rounded-lg overflow-hidden cyber-panel">
         <MapContainer
+          key="map-container"
           center={mapCenter}
           zoom={mapZoom}
+          scrollWheelZoom={true}
           className="h-full w-full"
-          whenReady={(e) => {
-            setMap(e.target);
-            mapRef.current = e.target;
+          whenCreated={(mapInstance) => {
+            console.log('Map created');
+            setMap(mapInstance);
           }}
         >
           <TileLayer
             attribution='© <a href="https://www.mapbox.com/about/maps/">Mapbox</a>'
-            url={`https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=${import.meta.env.VITE_MAPBOX_API_KEY}`}
+            url={`https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/{z}/{x}/{y}?access_token=${import.meta.env.VITE_MAPBOX_API_KEY}`}
+            tileSize={512}
+            zoomOffset={-1}
+            maxZoom={18}
           />
           {geocodedListings.map((listing) => {
-            if (!listing.coordinates) {
-              return null;
-            }
-
+            if (!listing.coordinates) return null;
             return (
               <Marker
                 key={listing.id}
                 position={listing.coordinates}
                 icon={getMarkerIcon(listing.type)}
                 eventHandlers={{
-                  click: () => {
-                    onListingClick?.(listing);
-                  },
+                  click: () => onListingClick?.(listing)
                 }}
               >
                 <Popup>
