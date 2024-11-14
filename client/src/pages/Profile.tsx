@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "wouter";
+import { useLocation } from "wouter"; // Fixed import
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Card } from "@/components/ui/card";
@@ -34,7 +34,7 @@ type UpdateProfileSchema = z.infer<typeof updateProfileSchema>;
 export default function ProfilePage() {
   const { user, authData } = useUser();
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [completionPercentage, setCompletionPercentage] = useState(0);
 
@@ -59,13 +59,13 @@ export default function ProfilePage() {
 
   // Redirect if user is not authenticated
   if (!user) {
-    navigate('/');
+    setLocation('/');
     return null;
   }
 
   useEffect(() => {
     if (authData && !user) {
-      navigate('/');
+      setLocation('/');
       return;
     }
 
@@ -81,12 +81,12 @@ export default function ProfilePage() {
 
       setCompletionPercentage((completed / totalFields) * 100);
     }
-  }, [user, authData, navigate]);
+  }, [user, authData, setLocation]);
 
   const onSubmit = async (values: UpdateProfileSchema) => {
     try {
       setIsSubmitting(true);
-      const response = await fetch("/api/user/profile", {
+      const response = await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),

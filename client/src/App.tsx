@@ -1,4 +1,4 @@
-import { Switch, Route, Navigate } from "wouter";
+import { Switch, Route, useLocation } from "wouter";
 import Home from "@/pages/Home";
 import Chat from "@/pages/Chat";
 import Marketplace from "@/pages/Marketplace";
@@ -14,6 +14,7 @@ import { useState, useEffect } from "react";
 function ProtectedProfile() {
   const { user, authData } = useUser();
   const [isLoading, setIsLoading] = useState(true);
+  const [, setLocation] = useLocation();
   
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 2000);
@@ -29,7 +30,8 @@ function ProtectedProfile() {
   }
   
   if (!user) {
-    return <Navigate to="/" />;
+    setLocation('/');
+    return null;
   }
   
   return <Profile />;
@@ -46,6 +48,7 @@ export default function App() {
           <Route path="/marketplace" component={Marketplace} />
           <Route path="/profile" component={ProtectedProfile} />
           <Route path="/wallet" component={Wallet} />
+          <Route>404 - Page Not Found</Route>
         </Switch>
       </main>
       <Toaster />

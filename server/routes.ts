@@ -7,6 +7,7 @@ import profileRoutes from './routes/profile';
 import authRoutes from './routes/auth';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import express from 'express';
 
 // ES modules path resolution
 const __filename = fileURLToPath(import.meta.url);
@@ -20,6 +21,7 @@ export function registerRoutes(app: Express) {
   setupAuth(app);
   app.use('/api/auth', authRoutes);
 
+  // API Routes
   // Add a public route for initial auth check
   app.get("/api/auth-check", (req, res) => {
     res.json({ 
@@ -242,8 +244,46 @@ export function registerRoutes(app: Express) {
     res.json(messages);
   });
 
-  // Add a catch-all route for SPA
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
-  });
+  // Serve static files in production
+  if (process.env.NODE_ENV === 'production') {
+    // In production, serve from the dist/client directory
+    const staticPath = path.join(__dirname, '../client');
+    
+    // Serve static files with proper error handling
+    app.use(express.static(staticPath, {
+      maxAge: '1d', // Cache for 1 day
+      fallthrough: true,
+      etag: true,
+      lastModified: true,
+      immutable: true,
+      cacheControl: true,
+      dotfiles: 'ignore',
+      index: false // Don't serve directory indexes
+    }));
+
+    // Add a catch-all route for SPA
+    app.get('*', (req, res) => {
+      const indexPath = path.join(staticPath, 'index.html');
+      
+      res.sendFile(indexPath, (err) => {
+        if (err) {
+          console.error('Static file serving error:', err);
+          // Only send detailed error in development
+          if (process.env.NODE_ENV !== 'production') {
+            return res.status(500).send(err.message);
+          }
+          // Generic error in production
+          return res.status(500).send('Internal Server Error');
+        }
+      });
+    });
+  } else {
+    // In development, proxy all non-API requests to Vite dev server
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api/')) {
+        return next();
+      }
+      res.redirect(`http://localhost:5173${req.url}`);
+    });
+  }
 }
