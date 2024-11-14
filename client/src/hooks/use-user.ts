@@ -48,7 +48,7 @@ export function useUser() {
     }
   }, [authData?.user, setLocation]);
 
-  const authenticateWithPi = async (maxRetries = MAX_RETRIES) => {
+  const authenticateWithPi = async () => {
     if (authState.isAuthenticating) {
       console.warn("Authentication already in progress");
       return { ok: false, message: "Authentication already in progress" };
@@ -66,8 +66,7 @@ export function useUser() {
     setAuthState(prev => ({
       ...prev,
       isAuthenticating: true,
-      error: null,
-      lastAttempt: Date.now()
+      error: null
     }));
 
     try {
@@ -75,7 +74,7 @@ export function useUser() {
       const authResult = await piHelper.authenticate();
       
       if (!authResult?.uid) {
-        throw new Error('Authentication response missing user ID');
+        throw new Error('Authentication failed');
       }
 
       const response = await fetch("/pi-auth", {
@@ -83,19 +82,15 @@ export function useUser() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           piUid: authResult.uid,
-          username: `pi_user_${authResult.uid.slice(0, 8)}`,
-          accessToken: authResult.accessToken
+          accessToken: authResult.accessToken,
+          username: `pi_user_${authResult.uid.slice(0, 8)}`
         }),
         credentials: "include"
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        const error = new Error(data.message || "Authentication failed") as AuthError;
-        error.code = data.code;
-        error.details = data.details;
-        throw error;
+        const error = await response.json();
+        throw new Error(error.message);
       }
 
       await mutate();
@@ -105,55 +100,25 @@ export function useUser() {
         retryCount: 0,
         lastAttempt: null
       });
-
-      // Redirect to profile page if user is unverified
-      if (data.user?.status === 'unverified') {
-        setLocation('/profile');
-      }
       
       return { ok: true };
     } catch (error: any) {
-      console.error("Pi authentication error:", {
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        retryCount: authState.retryCount
-      });
+      console.error('Pi auth error:', error);
       
-      const formattedError: AuthError = {
-        code: error.code,
-        message: error.message || "Authentication failed",
-        details: error.details
-      };
-
-      setAuthState(prev => {
-        const newRetryCount = prev.retryCount + 1;
-        const shouldRetry = newRetryCount < maxRetries;
-
-        if (shouldRetry) {
-          const delay = Math.min(
-            RETRY_DELAY_BASE * Math.pow(2, prev.retryCount),
-            10000 // Max 10 second delay
-          );
-
-          setTimeout(() => {
-            authenticateWithPi(maxRetries);
-          }, delay);
-        }
-
-        return {
-          isAuthenticating: shouldRetry,
-          error: formattedError,
-          retryCount: newRetryCount,
-          lastAttempt: Date.now()
-        };
-      });
+      setAuthState(prev => ({
+        ...prev,
+        isAuthenticating: false,
+        error: {
+          message: error.message,
+          code: error.code,
+          details: error.details
+        },
+        lastAttempt: Date.now()
+      }));
 
       return { 
         ok: false, 
-        message: formattedError.message,
-        code: formattedError.code,
-        details: formattedError.details
+        message: error.message 
       };
     }
   };

@@ -5,6 +5,12 @@ import { listings, transactions, chats, users } from "../db/schema";
 import { eq, and, or, ilike, sql } from "drizzle-orm";
 import profileRoutes from './routes/profile';
 import authRoutes from './routes/auth';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// ES modules path resolution
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export function registerRoutes(app: Express) {
   // Register profile routes first
@@ -64,7 +70,7 @@ export function registerRoutes(app: Express) {
             
         if (hashtagArray.length > 0) {
           conditions.push(
-            sql`${listings.hashtags} && ${sql.array(hashtagArray, 'text')}`
+            sql`${listings.hashtags} && array[${sql.join(hashtagArray)}]::text[]`
           );
         }
       }
@@ -234,5 +240,10 @@ export function registerRoutes(app: Express) {
       .orderBy(chats.createdAt);
 
     res.json(messages);
+  });
+
+  // Add a catch-all route for SPA
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../../client/dist/index.html'));
   });
 }

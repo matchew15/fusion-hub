@@ -9,11 +9,18 @@ import { Toaster } from "@/components/ui/toaster";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useUser } from "@/hooks/use-user";
 import { Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
 
 function ProtectedProfile() {
   const { user, authData } = useUser();
+  const [isLoading, setIsLoading] = useState(true);
   
-  if (!authData) {
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 2000);
+    return () => clearTimeout(timer);
+  }, []);
+  
+  if (!authData || isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
