@@ -43,10 +43,10 @@ export function useUser() {
 
   // Handle automatic redirection to profile page for new users
   useEffect(() => {
-    if (authData?.user && authData.user.status === 'unverified') {
+    if (authData?.authenticated && authData?.user?.status === 'unverified') {
       setLocation('/profile');
     }
-  }, [authData?.user, setLocation]);
+  }, [authData, setLocation]);
 
   const authenticateWithPi = async () => {
     if (authState.isAuthenticating) {

@@ -8,10 +8,12 @@ import authRoutes from './routes/auth';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import express from 'express';
+import fs from 'fs';
 
 // ES modules path resolution
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const PROJECT_ROOT = path.resolve(__dirname, '..');
 
 export function registerRoutes(app: Express) {
   // Register profile routes first
@@ -22,7 +24,6 @@ export function registerRoutes(app: Express) {
   app.use('/api/auth', authRoutes);
 
   // API Routes
-  // Add a public route for initial auth check
   app.get("/api/auth-check", (req, res) => {
     res.json({ 
       authenticated: req.isAuthenticated(),
@@ -30,6 +31,7 @@ export function registerRoutes(app: Express) {
     });
   });
 
+  // User routes
   app.get("/api/user", (req, res) => {
     if (req.isAuthenticated()) {
       return res.json(req.user);
@@ -92,6 +94,7 @@ export function registerRoutes(app: Express) {
     }
   });
 
+  // Other API routes...
   app.post("/api/listings", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -247,38 +250,81 @@ export function registerRoutes(app: Express) {
   // Serve static files in production
   if (process.env.NODE_ENV === 'production') {
     // In production, serve from the dist/client directory
-    const staticPath = path.join(__dirname, '../client');
-    
-    // Serve static files with proper error handling
+    const staticPath = path.join(PROJECT_ROOT, 'dist/client');
+    const indexPath = path.join(staticPath, 'index.html');
+
+    // Configure MIME types and security headers
+    const mimeTypes: Record<string, string> = {
+      '.js': 'application/javascript',
+      '.mjs': 'application/javascript',
+      '.css': 'text/css',
+      '.html': 'text/html',
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.svg': 'image/svg+xml',
+      '.json': 'application/json',
+      '.woff': 'font/woff',
+      '.woff2': 'font/woff2',
+      '.ttf': 'font/ttf',
+      '.eot': 'application/vnd.ms-fontobject'
+    };
+
+    // Verify static directory and index.html exist
+    if (!fs.existsSync(staticPath)) {
+      fs.mkdirSync(staticPath, { recursive: true });
+      console.log('Created static directory:', staticPath);
+    }
+
+    // Serve static files with proper configuration
     app.use(express.static(staticPath, {
-      maxAge: '1d', // Cache for 1 day
-      fallthrough: true,
+      maxAge: '1d',
       etag: true,
       lastModified: true,
-      immutable: true,
-      cacheControl: true,
-      dotfiles: 'ignore',
-      index: false // Don't serve directory indexes
+      setHeaders: (res, filepath) => {
+        const ext = path.extname(filepath).toLowerCase();
+        
+        // Set correct MIME type
+        const mimeType = mimeTypes[ext];
+        if (mimeType) {
+          res.setHeader('Content-Type', mimeType);
+        }
+
+        // Add security headers
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('X-Frame-Options', 'DENY');
+        res.setHeader('X-XSS-Protection', '1; mode=block');
+        
+        // Set caching headers
+        if (ext === '.html') {
+          res.setHeader('Cache-Control', 'no-cache');
+        } else {
+          res.setHeader('Cache-Control', 'public, max-age=86400');
+        }
+      }
     }));
 
-    // Add a catch-all route for SPA
-    app.get('*', (req, res) => {
-      const indexPath = path.join(staticPath, 'index.html');
-      
-      res.sendFile(indexPath, (err) => {
+    // SPA fallback with enhanced error handling
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api/')) {
+        return next();
+      }
+
+      if (!fs.existsSync(indexPath)) {
+        console.error('Index file not found:', indexPath);
+        return res.status(500).send('Server configuration error');
+      }
+
+      res.sendFile(indexPath, err => {
         if (err) {
-          console.error('Static file serving error:', err);
-          // Only send detailed error in development
-          if (process.env.NODE_ENV !== 'production') {
-            return res.status(500).send(err.message);
-          }
-          // Generic error in production
-          return res.status(500).send('Internal Server Error');
+          console.error('Failed to send index.html:', err);
+          next(err);
         }
       });
     });
   } else {
-    // In development, proxy all non-API requests to Vite dev server
+    // Development mode handling
     app.get('*', (req, res, next) => {
       if (req.path.startsWith('/api/')) {
         return next();

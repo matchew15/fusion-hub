@@ -42,10 +42,22 @@ const RETRY_DELAY = 1000; // 1 second
 const REQUIRED_SCOPES = ['payments'];
 
 class PiHelper {
+  private static instance: PiHelper | null = null;
   private sdk: PiNetwork | null = null;
   private initialized = false;
   private initializationPromise: Promise<void> | null = null;
   private initializationError: Error | null = null;
+
+  static getInstance(): PiHelper {
+    if (!PiHelper.instance) {
+      PiHelper.instance = new PiHelper();
+    }
+    return PiHelper.instance;
+  }
+
+  private constructor() {
+    // Private constructor to enforce singleton
+  }
 
   private async delay(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -189,4 +201,5 @@ class PiHelper {
   }
 }
 
-export const piHelper = new PiHelper();
+// Export singleton instance
+export const piHelper = PiHelper.getInstance();

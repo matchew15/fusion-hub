@@ -11,6 +11,10 @@ build = ["npm", "run", "build"]
 run = ["npm", "run", "start"]
 
 [[ports]]
+localPort = 3000
+externalPort = 3000
+
+[[ports]]
 localPort = 5000
 externalPort = 80
 
@@ -50,6 +54,14 @@ args = "Production Server"
 [[workflows.workflow.tasks]]
 task = "workflow.run"
 args = "Production Build and Start"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Production Build"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Production App"
 
 [[workflows.workflow]]
 name = "Start App"
@@ -94,7 +106,7 @@ task = "packager.installForAll"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run build && cross-env NODE_ENV=production node dist/index.js"
-waitForPort = 5000
+waitForPort = 3000
 
 [[workflows.workflow]]
 name = "Production Build and Start"
@@ -109,4 +121,34 @@ task = "packager.installForAll"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run build && cross-env NODE_ENV=production node dist/index.js"
+waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Production Build"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run build && cross-env NODE_ENV=production node dist/index.js"
+waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Production App"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run build && NODE_ENV=production node dist/index.js"
 waitForPort = 5000

@@ -4,10 +4,11 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "concurrently \"vite\" \"tsx watch --clear-screen=false --exclude vite.config.ts.* server/index.ts\"",
-    "build:client": "vite build --outDir dist/client",
-    "build:server": "esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
-    "build": "npm run build:client && npm run build:server",
+    "dev": "concurrently \"vite --port 3001\" \"tsx watch --clear-screen=false --exclude vite.config.ts.* server/index.ts\"",
+    "build:clean": "rimraf dist",
+    "build:client": "vite build",
+    "build:server": "esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/index.js",
+    "build": "npm run build:clean && npm run build:client && npm run build:server",
     "start": "cross-env NODE_ENV=production node dist/index.js",
     "db:push": "drizzle-kit push"
   },
@@ -77,6 +78,7 @@
     "react-leaflet": "^4.2.1",
     "react-resizable-panels": "^2.1.4",
     "recharts": "^2.13.0",
+    "rimraf": "^5.0.10",
     "swr": "^2.2.5",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
@@ -98,7 +100,7 @@
     "esbuild": "^0.24.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",
-    "tsx": "^4.19.1",
+    "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vite": "^5.4.11"
   }
